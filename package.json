@@ -10,9 +10,7 @@
   "author": "Grayy",
   "license": "ISC",
   "dependencies": {
-    "cors": "^2.8.5",
     "express": "^4.19.2",
-    "express-ws": "^5.0.2",
     "ws": "^8.18.0"
   }
 }

@@ -1,5 +1,4 @@
 const express = require("express");
-const http = require("http");
 const WebSocket = require("ws");
 
 const app = express();
@@ -7,11 +6,8 @@ const port = process.env.PORT || 3001;
 
 app.use(express.json());
 
-// Create an HTTP server using the Express app
-const server = http.createServer(app);
-
-// Create a WebSocket server by passing the HTTP server
-const wss = new WebSocket.Server({ server });
+// Create a WebSocket server for players to connect to and be able to control their client
+const wss = new WebSocket.Server({ port: port });
 
 let ConnectedClients = {};
 
@@ -45,6 +41,8 @@ function AddNewUser(ws, message) {
     userid: message.userid,
     ws: ws,
   };
+
+  // console.log(ConnectedClients);
 }
 
 function SendCmd(message) {
@@ -64,9 +62,11 @@ wss.on("connection", (ws) => {
     let message = JSON.parse(data.toString());
 
     switch (message.action) {
+      // Add new user
       case "newuser":
         AddNewUser(ws, message);
         break;
+      // Run a command
       case "run":
         console.log(message);
         SendCmd(message);
@@ -84,6 +84,12 @@ wss.on("connection", (ws) => {
     console.log("User Disconnected", ConnectedClients[ws].username);
     delete ConnectedClients[ws];
   });
+
+  // ws.send("User Connected!");
+});
+
+app.listen(port + 1, () => {
+  console.log(`Express Server listening on port ${port + 1}`);
 });
 
 app.get("/", (req, res) => {
@@ -109,7 +115,4 @@ app.post("/run", (req, res) => {
   }
 });
 
-// Start the server
-server.listen(port, () => {
-  console.log(`Server listening on port ${port}`);
-});
+console.log(`Websocket listening on port ${port}`);
