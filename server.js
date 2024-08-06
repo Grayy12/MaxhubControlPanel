@@ -1,11 +1,21 @@
 const express = require("express");
 const expressWs = require("express-ws");
+const cors = require("cors");
 const app = express();
 const port = process.env.PORT || 3001;
 
 // Initialize express-ws
-const wsInstance = expressWs(app);
-const wss = wsInstance.getWss();
+// const wsInstance = expressWs(app);
+// const wss = wsInstance.getWss();
+expressWs(app)
+// Use CORS middleware
+app.use(cors());
+
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+  next();
+});
 
 let ConnectedClients = {};
 
