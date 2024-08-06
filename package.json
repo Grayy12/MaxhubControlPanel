@@ -1,0 +1,16 @@
+{
+  "name": "maxhubcontrolpanel",
+  "version": "1.0.0",
+  "description": "A Control Panel to control maxhub users",
+  "main": "server.js",
+  "scripts": {
+    "test": "node .",
+    "start": "node server.js"
+  },
+  "author": "Grayy",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.19.2",
+    "ws": "^8.18.0"
+  }
+}

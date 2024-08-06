@@ -1,0 +1,15 @@
+Contol Panel to control Maxhub Users
+
+	Commands
+		Kill
+		Teleport
+
+	Website
+		Use express to control the website and have the abilty to interact with the websocket
+
+		Have a website to have the controls and have the ablity to switch users to control
+
+	Admin System
+		Have a login system that only admins have access to to be able to protect the website
+
+ss

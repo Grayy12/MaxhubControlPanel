@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Control Panel with Modal</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background-color: #272727;
+        margin: 0;
+        padding: 20px;
+        color: #fff;
+      }
+      h1 {
+        text-align: center;
+        color: #333;
+      }
+      .control-panel {
+        max-width: 400px;
+        margin: 0 auto;
+        padding: 20px;
+        background: rgb(255, 255, 255);
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+      }
+      select {
+        width: 100%;
+        padding: 10px;
+        margin: 10px 0;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        font-size: 16px;
+        background-color: #f7f7f7;
+      }
+      .button-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 10px;
+      }
+      button {
+        padding: 10px;
+        border: none;
+        border-radius: 5px;
+        font-size: 16px;
+        background-color: #007bff;
+        color: white;
+        cursor: pointer;
+        transition: background-color 0.3s;
+      }
+      button:hover {
+        background-color: #0056b3;
+      }
+      /* Modal styles */
+      .modal {
+        display: none;
+        position: fixed;
+        z-index: 1;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0, 0, 0, 0.5);
+        padding-top: 60px;
+      }
+      .modal-content {
+        background-color: #fefefe;
+        margin: 5% auto;
+        padding: 20px;
+        border: 1px solid #888;
+        width: 80%;
+        max-width: 500px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        position: relative;
+        animation: fadeIn 0.3s;
+      }
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+      .close {
+        color: #aaa;
+        float: right;
+        font-size: 28px;
+        font-weight: bold;
+        position: absolute;
+        top: 10px;
+        right: 20px;
+      }
+      .close:hover,
+      .close:focus {
+        color: black;
+        text-decoration: none;
+        cursor: pointer;
+      }
+      .modal h2 {
+        color: #333;
+      }
+      .modal p {
+        color: #333;
+        font-size: 16px;
+      }
+      .modal label {
+        display: block;
+        margin: 10px 0 5px;
+        color: #333;
+      }
+      .modal input {
+        width: calc(100% - 20px); /* Adjust the width to add padding */
+        padding: 10px;
+        margin: 5px 0 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        font-size: 16px;
+        background-color: #f7f7f7;
+      }
+      .modal button {
+        width: 100%;
+        padding: 10px;
+        border: none;
+        border-radius: 5px;
+        font-size: 16px;
+        background-color: #007bff;
+        color: white;
+        cursor: pointer;
+        transition: background-color 0.3s;
+      }
+      .modal button:hover {
+        background-color: #0056b3;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="control-panel">
+      <h1>User Control Panel</h1>
+      <select id="userSelector">
+        <!-- <option value="user1">User 1</option>
+        <option value="user2">User 2</option>
+        <option value="user3">User 3</option> -->
+      </select>
+      <div class="button-container">
+        <button id="teleportButton">Teleport</button>
+        <button id="killButton">Kill</button>
+        <button id="jumpscareButton">Jumpscare</button>
+      </div>
+    </div>
+
+    <!-- The Modal -->
+    <div id="myModal" class="modal">
+      <div class="modal-content">
+        <span class="close">&times;</span>
+        <h2 id="modalTitle">Enter Arguments</h2>
+        <form id="argsForm">
+          <!-- Dynamic form content will be inserted here -->
+        </form>
+        <button id="submitArgsButton">Submit</button>
+      </div>
+    </div>
+
+    <script>
+      const userSelector = document.getElementById("userSelector");
+      const teleportButton = document.getElementById("teleportButton");
+      const killButton = document.getElementById("killButton");
+      const jumpscareButton = document.getElementById("jumpscareButton");
+
+      const modal = document.getElementById("myModal");
+      const span = document.getElementsByClassName("close")[0];
+      const argsForm = document.getElementById("argsForm");
+      const submitArgsButton = document.getElementById("submitArgsButton");
+      const modalTitle = document.getElementById("modalTitle");
+
+      // const ws = new WebSocket(`ws://localhost:8080`);
+
+      let currentButtonPressed = null;
+
+      const openModal = (buttonType, args) => {
+        argsForm.innerHTML = "";
+        
+
+        // Check if userSelector.value is empty
+        const userSelector = document.getElementById("userSelector");
+        if (userSelector && userSelector.value === "") {
+          modalTitle.textContent = "Warning";
+          const message = document.createElement("p");
+          message.textContent = "You need to select a user";
+          argsForm.appendChild(message);
+          modal.style.display = "block";
+          return; // Exit the function if no user is selected
+        }
+
+        currentButtonPressed = buttonType;
+
+        if (args.length === 0) {
+          modalTitle.textContent = "Are you sure?";
+          const message = document.createElement("p");
+          message.textContent = "Are you sure you want to perform this action?";
+          argsForm.appendChild(message);
+        } else {
+          modalTitle.textContent = "Enter Arguments";
+          args.forEach((arg) => {
+            const label = document.createElement("label");
+            label.textContent = arg.label;
+            const input = document.createElement("input");
+            input.type = arg.type;
+            input.name = arg.name;
+            input.placeholder = arg.placeholder || "";
+            input.required = arg.required || false;
+            argsForm.appendChild(label);
+            argsForm.appendChild(input);
+          });
+        }
+        modal.style.display = "block";
+      };
+
+      span.onclick = () => {
+        modal.style.display = "none";
+      };
+
+      window.onclick = (event) => {
+        if (event.target == modal) {
+          modal.style.display = "none";
+        }
+      };
+
+      submitArgsButton.onclick = async () => {
+        if (currentButtonPressed === null) {
+          modal.style.display = "none";
+          return;
+        }
+        const formData = new FormData(argsForm);
+        const data = {};
+        formData.forEach((value, key) => {
+          data[key] = value;
+        });
+        console.log(data);
+        await SendCmd(data);
+        modal.style.display = "none";
+        currentButtonPressed = null;
+      };
+
+      const handleButtonClick = (buttonType) => {
+        const selectedUser = userSelector.value;
+        let args = [];
+        if (buttonType === "teleport") {
+          args = [
+            {
+              label: "PlaceId",
+              type: "text",
+              name: "PlaceId",
+              placeholder: "Place Id",
+              required: true,
+            },
+            {
+              label: "JobId",
+              type: "text",
+              name: "JobId",
+              placeholder: "Job Id",
+              required: true,
+            },
+          ];
+        } else if (buttonType === "kill") {
+          args = [];
+        } else if (buttonType === "jumpscare") {
+          // No arguments, just a confirmation
+          args = [];
+        }
+        openModal(buttonType, args);
+      };
+
+      function AddUsers(data) {
+        console.log("Adding users");
+        const oldSelectedUser = userSelector.value;
+        userSelector.innerHTML = "";
+        data.users.forEach((user) => {
+          const option = document.createElement("option");
+          option.value = user;
+          option.textContent = user;
+          userSelector.appendChild(option);
+
+          if (user === oldSelectedUser) {
+            userSelector.value = user;
+          }
+        });
+      }
+
+      async function GetConnectedUsers() {
+        const response = await fetch(`users`);
+        const data = await response.json();
+        AddUsers(data);
+      }
+
+      async function SendCmd(data) {
+        const response = await fetch(`/run`, {
+          method: "POST",
+          headers: {
+            "Content-type": "application/json; charset=UTF-8",
+          },
+          body: JSON.stringify({
+            action: "run",
+            cmd: currentButtonPressed,
+            args: data,
+            user: userSelector.value,
+          }),
+        });
+      }
+
+      // ws.onopen = () => {
+      //   console.log("Connected to server");
+
+      teleportButton.addEventListener("click", () =>
+        handleButtonClick("teleport")
+      );
+      killButton.addEventListener("click", () => handleButtonClick("kill"));
+      jumpscareButton.addEventListener("click", () =>
+        handleButtonClick("jumpscare")
+      );
+
+      //   ws.onmessage = (event) => {
+      //     console.log(`Message from server: ${event.data}`);
+      //     const data = JSON.parse(event.data);
+      //     if (data.action === "users") {
+      //       AddUsers(data);
+      //     }
+      //   };
+
+      (async () => {
+        await GetConnectedUsers();
+      })();
+
+      // };
+    </script>
+  </body>
+</html>
