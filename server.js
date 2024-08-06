@@ -128,7 +128,11 @@ app.use(express.json());
 const server = http.createServer(app);
 
 // Create a WebSocket server by passing the HTTP server
-const wss = new WebSocket.Server({ server });
+const wss = new WebSocket.Server({
+  server: server,
+  perMessageDeflate: false,
+  clientTracking: true,
+});
 
 let ConnectedClients = {};
 
@@ -177,6 +181,12 @@ function SendCmd(message) {
 wss.on("connection", (ws) => {
   console.log("Connected to server");
 
+  const pingInterval = setInterval(() => {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.ping(() => {});
+    }
+  }, 30000);
+
   ws.on("message", (data) => {
     let message = JSON.parse(data.toString());
 
@@ -196,6 +206,7 @@ wss.on("connection", (ws) => {
   ws.on("error", console.error);
 
   ws.on("close", () => {
+    clearInterval(pingInterval);
     if (!ConnectedClients[ws]) return;
 
     console.log("User Disconnected", ConnectedClients[ws].username);
