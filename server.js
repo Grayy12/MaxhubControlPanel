@@ -132,6 +132,7 @@ const wss = new WebSocket.Server({
   server: server,
   perMessageDeflate: false,
   clientTracking: true,
+  path: "/ws",
 });
 
 let ConnectedClients = {};
