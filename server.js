@@ -1,16 +1,11 @@
-const http = require('http');
 const express = require("express");
-const WebSocket = require("ws");
-
+const expressWs = require("express-ws");
 const app = express();
 const port = process.env.PORT || 3001;
 
-const server = http.createServer(app);
-
-app.use(express.json());
-
-// Create a WebSocket server for players to connect to and be able to control their client
-const wss = new WebSocket.Server({ noServer: true });
+// Initialize express-ws
+const wsInstance = expressWs(app);
+const wss = wsInstance.getWss();
 
 let ConnectedClients = {};
 
@@ -52,9 +47,12 @@ function SendCmd(message) {
   }
 }
 
-wss.on("connection", (ws) => {
+app.use(express.json());
+
+// WebSocket endpoint
+app.ws("/ws", (ws, req) => {
   console.log("Connected to server");
-  
+
   ws.on("message", (data) => {
     let message = JSON.parse(data.toString());
 
@@ -85,13 +83,7 @@ wss.on("connection", (ws) => {
   // ws.send("User Connected!");
 });
 
-server.on("upgrade", (request, socket, head) => {
-  wss.handleUpgrade(request, socket, head, (websocket) => {
-    wss.emit("connection", websocket, request);
-  });
-});
-
-app.use(express.static('public'))
+app.use(express.static('public'));
 
 app.listen(port, () => {
   console.log(`Express Server listening on port ${port}`);
@@ -116,6 +108,6 @@ app.post('/run', (req, res) => {
   } else {
     res.send({ success: false });
   }
-})
+});
 
 console.log(`Websocket listening on port ${port}`);
