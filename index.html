@@ -175,46 +175,50 @@
       const submitArgsButton = document.getElementById("submitArgsButton");
       const modalTitle = document.getElementById("modalTitle");
 
-      // const ws = new WebSocket(`ws://localhost:8080`);
-
       let currentButtonPressed = null;
 
       const openModal = (buttonType, args) => {
         argsForm.innerHTML = "";
-        
 
-        // Check if userSelector.value is empty
         const userSelector = document.getElementById("userSelector");
-        if (userSelector && userSelector.value === "") {
+        const selectedUser = userSelector.value;
+        if (!selectedUser) {
           modalTitle.textContent = "Warning";
           const message = document.createElement("p");
           message.textContent = "You need to select a user";
           argsForm.appendChild(message);
           modal.style.display = "block";
-          return; // Exit the function if no user is selected
+          return;
         }
 
         currentButtonPressed = buttonType;
 
-        if (args.length === 0) {
-          modalTitle.textContent = "Are you sure?";
-          const message = document.createElement("p");
-          message.textContent = "Are you sure you want to perform this action?";
-          argsForm.appendChild(message);
-        } else {
-          modalTitle.textContent = "Enter Arguments";
-          args.forEach((arg) => {
-            const label = document.createElement("label");
-            label.textContent = arg.label;
-            const input = document.createElement("input");
-            input.type = arg.type;
-            input.name = arg.name;
-            input.placeholder = arg.placeholder || "";
-            input.required = arg.required || false;
-            argsForm.appendChild(label);
-            argsForm.appendChild(input);
-          });
+        const title = args.length === 0 ? "Are you sure?" : "Enter Arguments";
+        modalTitle.textContent = title;
+
+        const message =
+          args.length === 0
+            ? "Are you sure you want to perform this action?"
+            : null;
+        if (message) {
+          const p = document.createElement("p");
+          p.textContent = message;
+          argsForm.appendChild(p);
         }
+
+        args.forEach(({ label, type, name, placeholder, required }) => {
+          const labelEl = document.createElement("label");
+          labelEl.textContent = label;
+
+          const inputEl = document.createElement("input");
+          inputEl.type = type;
+          inputEl.name = name;
+          inputEl.placeholder = placeholder || "";
+          inputEl.required = required || false;
+
+          argsForm.appendChild(labelEl);
+          argsForm.appendChild(inputEl);
+        });
         modal.style.display = "block";
       };
 
@@ -233,66 +237,59 @@
           modal.style.display = "none";
           return;
         }
+
         const formData = new FormData(argsForm);
+
         const data = {};
         formData.forEach((value, key) => {
           data[key] = value;
         });
-        console.log(data);
+
         await SendCmd(data);
+
         modal.style.display = "none";
         currentButtonPressed = null;
       };
 
+      const buttonTypes = {
+        teleport: [
+          {
+            label: "PlaceId",
+            type: "text",
+            name: "PlaceId",
+            placeholder: "Place Id",
+            required: true,
+          },
+          {
+            label: "JobId",
+            type: "text",
+            name: "JobId",
+            placeholder: "Job Id",
+            required: true,
+          },
+        ],
+        kill: [],
+        jumpscare: [],
+      };
+
       const handleButtonClick = (buttonType) => {
-        const selectedUser = userSelector.value;
-        let args = [];
-        if (buttonType === "teleport") {
-          args = [
-            {
-              label: "PlaceId",
-              type: "text",
-              name: "PlaceId",
-              placeholder: "Place Id",
-              required: true,
-            },
-            {
-              label: "JobId",
-              type: "text",
-              name: "JobId",
-              placeholder: "Job Id",
-              required: true,
-            },
-          ];
-        } else if (buttonType === "kill") {
-          args = [];
-        } else if (buttonType === "jumpscare") {
-          // No arguments, just a confirmation
-          args = [];
-        }
-        openModal(buttonType, args);
+        openModal(buttonType, buttonTypes[buttonType]);
       };
 
       function AddUsers(data) {
-        console.log("Adding users");
+        const users = new Set(data.users);
         const oldSelectedUser = userSelector.value;
-        userSelector.innerHTML = "";
-        data.users.forEach((user) => {
-          const option = document.createElement("option");
-          option.value = user;
-          option.textContent = user;
-          userSelector.appendChild(option);
 
-          if (user === oldSelectedUser) {
-            userSelector.value = user;
-          }
-        });
+        userSelector.innerHTML = [...users]
+          .map((user) => `<option value="${user}">${user}</option>`)
+          .join("");
+
+        userSelector.value = users.has(oldSelectedUser) ? oldSelectedUser : "";
       }
 
       async function GetConnectedUsers() {
-        const response = await fetch(`users`);
-        const data = await response.json();
-        AddUsers(data);
+        const { users } = await fetch(`users`).then((res) => res.json());
+        AddUsers({ users });
       }
 
       async function SendCmd(data) {
@@ -310,30 +307,19 @@
         });
       }
 
-      // ws.onopen = () => {
-      //   console.log("Connected to server");
-
       teleportButton.addEventListener("click", () =>
         handleButtonClick("teleport")
       );
+
       killButton.addEventListener("click", () => handleButtonClick("kill"));
+
       jumpscareButton.addEventListener("click", () =>
         handleButtonClick("jumpscare")
       );
 
-      //   ws.onmessage = (event) => {
-      //     console.log(`Message from server: ${event.data}`);
-      //     const data = JSON.parse(event.data);
-      //     if (data.action === "users") {
-      //       AddUsers(data);
-      //     }
-      //   };
-
       (async () => {
         await GetConnectedUsers();
       })();
-
-      // };
     </script>
   </body>
 </html>

