@@ -91,6 +91,8 @@ server.on("upgrade", (request, socket, head) => {
   });
 });
 
+app.use(express.static('public'))
+
 app.listen(port, () => {
   console.log(`Express Server listening on port ${port}`);
 });
