@@ -97,7 +97,7 @@ app.get("/users", (req, res) => {
 // Route for running a command on a specific user
 app.post("/run", (req, res) => {
   const { user, cmd, args } = req.body;
-  const userExists = ConnectedClients[user];
+  const userExists = findUserByUsername(user);
 
   if (userExists) {
     userExists.ws.send(JSON.stringify({ action: "run", cmd, args }));

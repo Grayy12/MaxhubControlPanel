@@ -4,7 +4,7 @@ local localPlayer = game:GetService("Players").LocalPlayer
 local httpService = game:GetService("HttpService")
 
 -- WebSocket Client
-local ws = WebSocket.connect("ws://testserver-diki.onrender.com")
+local ws = WebSocket.connect("ws://localhost:3001/ws")
 
 -- Our connection data
 local userdata = {
