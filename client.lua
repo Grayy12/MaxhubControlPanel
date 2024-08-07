@@ -62,6 +62,7 @@ local commands = {
 
 			local sound = Instance.new("Sound", workspace)
 			sound.SoundId = getcustomasset("scream.mp3", true)
+			sound.Volume = 0.5
 			sound:Play()
 
 			items["_VideoFrame"].Looped = false
