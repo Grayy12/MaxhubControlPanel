@@ -35,6 +35,15 @@ local commands = {
 		return sendCmdResponse(false, "Failed to kill")
 	end,
 
+	say = function(args)
+		if game:GetService("TextChatService").ChatVersion == Enum.ChatVersion.TextChatService then
+			local channel: TextChannel = game:GetService("TextChatService").TextChannels.RBXGeneral
+			channel:SendAsync(args.Message)
+		else
+			game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents.SayMessageRequest:FireServer(args.Message, "All")
+		end
+	end,
+
 	jumpscare = function(args)
 		coroutine.wrap(function()
 			if not writefile or not getcustomasset or not request then
@@ -43,7 +52,7 @@ local commands = {
 
 			writefile("scream.mp3", request({ Url = "https://github.com/Grayy12/maxhubassets/raw/main/ScreamSfx.mp3", Method = "GET" }).Body)
 
-			writefile("skibidi.webm", request({ Url = "https://github.com/Grayy12/maxhubassets/raw/main/skibidi.webm", Method = "GET" }).Body)
+			writefile("skibidi.webm", request({ Url = "https://github.com/Grayy12/maxhubassets/raw/main/balls.webm", Method = "GET" }).Body)
 
 			local items = {
 				["_ScreenGui"] = Instance.new("ScreenGui"),

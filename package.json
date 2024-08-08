@@ -4,13 +4,17 @@
   "description": "A Control Panel to control maxhub users",
   "main": "server.js",
   "scripts": {
+    "authserver": "node authServer.js",
     "test": "node .",
     "start": "node server.js"
   },
   "author": "Grayy",
   "license": "ISC",
   "dependencies": {
+    "cookie-parser": "^1.4.6",
+    "dotenv": "^16.4.5",
     "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2",
     "ws": "^8.18.0"
   }
 }

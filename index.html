@@ -145,9 +145,10 @@
         <option value="user3">User 3</option> -->
       </select>
       <div class="button-container">
-        <button id="teleportButton">Teleport</button>
-        <button id="killButton">Kill</button>
-        <button id="jumpscareButton">Jumpscare</button>
+        <button id="teleport">Teleport</button>
+        <button id="kill">Kill</button>
+        <button id="jumpscare">Jumpscare</button>
+        <button id="say">Say</button>
       </div>
     </div>
 
@@ -165,9 +166,7 @@
 
     <script>
       const userSelector = document.getElementById("userSelector");
-      const teleportButton = document.getElementById("teleportButton");
-      const killButton = document.getElementById("killButton");
-      const jumpscareButton = document.getElementById("jumpscareButton");
+      const buttons = document.querySelector(".button-container").children; 
 
       const modal = document.getElementById("myModal");
       const span = document.getElementsByClassName("close")[0];
@@ -176,6 +175,8 @@
       const modalTitle = document.getElementById("modalTitle");
 
       let currentButtonPressed = null;
+
+      const ws = new WebSocket("ws://localhost:3001/ws");
 
       const openModal = (buttonType, args) => {
         argsForm.innerHTML = "";
@@ -244,7 +245,7 @@
         formData.forEach((value, key) => {
           data[key] = value;
         });
-
+        console.log(data);
         await SendCmd(data);
 
         modal.style.display = "none";
@@ -270,6 +271,15 @@
         ],
         kill: [],
         jumpscare: [],
+        say: [
+          {
+            label: "Message",
+            type: "text",
+            name: "Message",
+            placeholder: "Message",
+            required: true,
+          }
+        ]
       };
 
       const handleButtonClick = (buttonType) => {
@@ -307,17 +317,23 @@
         });
       }
 
-      teleportButton.addEventListener("click", () =>
-        handleButtonClick("teleport")
-      );
+      // teleportButton.addEventListener("click", () =>
+      //   handleButtonClick("teleport")
+      // );
 
-      killButton.addEventListener("click", () => handleButtonClick("kill"));
+      // killButton.addEventListener("click", () => handleButtonClick("kill"));
 
-      jumpscareButton.addEventListener("click", () =>
-        handleButtonClick("jumpscare")
-      );
+      // jumpscareButton.addEventListener("click", () =>
+      //   handleButtonClick("jumpscare")
+      // );
+
+      Array.from(buttons).forEach((button) => {
+        button.addEventListener("click", () => handleButtonClick(button.id));
+      });
 
       (async () => {
+        await fetch('', {});
+
         await GetConnectedUsers();
       })();
     </script>

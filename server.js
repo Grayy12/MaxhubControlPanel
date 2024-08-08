@@ -1,7 +1,14 @@
+require("dotenv").config();
 const express = require("express");
 const http = require("http");
 const WebSocket = require("ws");
+const cookieParser = require("cookie-parser");
 const path = require("path");
+const { authenticateToken } = require("./tokenHandler.js");
+const loginRoute = require("./routes/login.js");
+const logoutRoute = require("./routes/logout.js");
+const tokenRoute = require("./routes/token.js");
+
 
 // Set up express and WebSocket server.
 const app = express();
@@ -14,9 +21,11 @@ const wss = new WebSocket.Server({
 });
 
 const ConnectedClients = {};
+const ConnectedAdmins = {};
 
 // Set up middleware.
 app.use(express.json());
+app.use(cookieParser());
 
 // Returns an array of connected user names.
 function getConnectedUsers() {
@@ -41,13 +50,14 @@ function addNewUser(ws, { username, userid }) {
   }
 }
 
-// Sends a command to a specific user.
-function sendCmd({ user, cmd, args }) {
-  const userExists = findUserByUsername(user);
-  if (userExists) {
-    userExists.ws.send(JSON.stringify({ action: "run", cmd, args }));
-  }
+function addNewAdmin(ws, { username}) {
+
 }
+
+function handleResponse() {
+
+}
+
 
 // Handle new WebSocket connections.
 wss.on("connection", (ws) => {
@@ -66,7 +76,7 @@ wss.on("connection", (ws) => {
     const actions = {
       newuser: () =>
         addNewUser(ws, { username: message.username, userid: message.userid }),
-      run: () => sendCmd(message),
+      cmdresponse: () => sendCmd(message),
     };
     actions[action]?.(); // Execute the corresponding action.
   };
@@ -80,32 +90,47 @@ wss.on("connection", (ws) => {
   // Handle WebSocket close events.
   ws.on("close", () => {
     clearInterval(pingInterval);
+    if (ConnectedClients[ws])
+      console.log(`${ConnectedClients[ws].username} Disconnected from server`);
     delete ConnectedClients[ws];
   });
 });
 
 // Handle GET request to the root URL ("/").
-app.get("/", (req, res) => {
+app.get("/", authenticateToken, (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
 });
 
+app.get('/login', (req, res) => {
+  const token = req.cookies["accessToken"];
+  if (token) return res.redirect("/")
+  res.sendFile(path.join(__dirname, "login.html"));
+})
+
 // Retrieve all connected users
-app.get("/users", (req, res) => {
+app.get("/users", authenticateToken, (req, res) => {
   const users = getConnectedUsers();
   res.send({ users: users });
 });
 
 // Route for running a command on a specific user
-app.post("/run", (req, res) => {
+app.post("/run", authenticateToken, (req, res) => {
   const { user, cmd, args } = req.body;
   const userExists = findUserByUsername(user);
 
   if (userExists) {
+    console.log(user, cmd, args);
     userExists.ws.send(JSON.stringify({ action: "run", cmd, args }));
   }
 
   res.send({ success: Boolean(userExists) });
 });
+
+app.post("/login", loginRoute)
+
+app.delete("/logout", logoutRoute)
+
+app.post('/token', tokenRoute)
 
 const port = process.env.PORT || 3001;
 // Start the server and listen on the specified port
