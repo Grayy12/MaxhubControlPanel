@@ -4,11 +4,10 @@ const http = require("http");
 const WebSocket = require("ws");
 const cookieParser = require("cookie-parser");
 const path = require("path");
-const { authenticateToken } = require("./tokenHandler.js");
+const tokenHandler = require("./tokenHandler.js");
 const loginRoute = require("./routes/login.js");
 const logoutRoute = require("./routes/logout.js");
 const tokenRoute = require("./routes/token.js");
-
 
 // Set up express and WebSocket server.
 const app = express();
@@ -39,29 +38,41 @@ function findUserByUsername(username) {
   );
 }
 
+function findAdminById(id) {
+  return Object.values(ConnectedAdmins).find(
+    ({ id: adminId }) => adminId === id
+  );
+}
+
 // Adds a new user to the list of connected clients.
 function addNewUser(ws, { username, userid }) {
   // Check if the user is already connected.
   if (Object.values(ConnectedClients).some((user) => user.userid === userid)) {
     ws.close();
-  } else {
-    console.log(`New user connected: ${username}`);
-    ConnectedClients[ws] = { username, userid, ws };
+  }
+  console.log(`New user connected: ${username}`);
+  ConnectedClients[ws] = { username, userid, ws };
+}
+
+function addNewAdmin(ws, { token }) {
+  const user = tokenHandler.getUserFromToken(token);
+  if (user) {
+    console.log(`New admin connected: ${user.id}`);
+    ConnectedAdmins[ws] = { id: user.id, ws };
   }
 }
 
-function addNewAdmin(ws, { username}) {
-
+function handleResponse(message) {
+  const { sender, receiver, success, response } = message;
+  const admin = findAdminById(receiver);
+  admin?.ws?.send(
+    JSON.stringify({ action: "cmdresponse", sender, success, response })
+  );
 }
-
-function handleResponse() {
-
-}
-
 
 // Handle new WebSocket connections.
 wss.on("connection", (ws) => {
-  console.log("Connected to server");
+  // console.log("Connected to server");
 
   // Set up a ping interval to keep the connection alive.
   const pingInterval = setInterval(() => {
@@ -76,7 +87,8 @@ wss.on("connection", (ws) => {
     const actions = {
       newuser: () =>
         addNewUser(ws, { username: message.username, userid: message.userid }),
-      cmdresponse: () => sendCmd(message),
+      newadmin: () => addNewAdmin(ws, { token: message.token }),
+      cmdresponse: () => handleResponse(message),
     };
     actions[action]?.(); // Execute the corresponding action.
   };
@@ -97,40 +109,42 @@ wss.on("connection", (ws) => {
 });
 
 // Handle GET request to the root URL ("/").
-app.get("/", authenticateToken, (req, res) => {
+app.get("/", tokenHandler.authenticateToken, (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
 });
 
-app.get('/login', (req, res) => {
+app.get("/login", (req, res) => {
   const token = req.cookies["accessToken"];
-  if (token) return res.redirect("/")
+  if (token) return res.redirect("/");
   res.sendFile(path.join(__dirname, "login.html"));
-})
+});
 
 // Retrieve all connected users
-app.get("/users", authenticateToken, (req, res) => {
+app.get("/users", tokenHandler.authenticateToken, (req, res) => {
   const users = getConnectedUsers();
   res.send({ users: users });
 });
 
 // Route for running a command on a specific user
-app.post("/run", authenticateToken, (req, res) => {
+app.post("/run", tokenHandler.authenticateToken, (req, res) => {
   const { user, cmd, args } = req.body;
   const userExists = findUserByUsername(user);
 
   if (userExists) {
     console.log(user, cmd, args);
-    userExists.ws.send(JSON.stringify({ action: "run", cmd, args }));
+    userExists.ws.send(
+      JSON.stringify({ sender: req.user.id, action: "run", cmd, args })
+    );
   }
 
   res.send({ success: Boolean(userExists) });
 });
 
-app.post("/login", loginRoute)
+app.post("/login", loginRoute);
 
-app.delete("/logout", logoutRoute)
+app.delete("/logout", logoutRoute);
 
-app.post('/token', tokenRoute)
+app.post("/token", tokenRoute);
 
 const port = process.env.PORT || 3001;
 // Start the server and listen on the specified port

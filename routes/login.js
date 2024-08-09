@@ -10,7 +10,7 @@ module.exports = (req, res) => {
   const id = Date.now().toString();
   const { accessToken, refreshToken } = tokenHandler.createToken({ id });
 
-  res.cookie("accessToken", accessToken, { httpOnly: true });
-  res.cookie("refreshToken", refreshToken, { httpOnly: true });
+  res.cookie("accessToken", accessToken);
+  res.cookie("refreshToken", refreshToken);
   res.redirect("/");
 };

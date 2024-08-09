@@ -134,21 +134,65 @@
       .modal button:hover {
         background-color: #0056b3;
       }
+      #statusModal .modal-content {
+        background-color: #fefefe;
+        margin: 5% auto;
+        padding: 20px;
+        border: 1px solid #888;
+        width: 80%;
+        max-width: 500px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        position: relative;
+        opacity: 1;
+        transition: opacity 0.2s ease; /* Transition effect */
+        animation: fadeIn 0.3s;
+      }
+
+      #statusModal.fade-out .modal-content {
+        opacity: 0;
+      }
+
+      #statusTitle {
+        color: #333;
+        text-align: center;
+      }
+
+      #statusMessage {
+        text-align: center;
+        font-size: 16px;
+      }
+
+      #editor {
+        width: 100%;
+        height: 400px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        font-size: 16px;
+        background-color: #f7f7f7;
+        margin-bottom: 10px;
+      }
     </style>
   </head>
   <body>
+    <!-- Status Modal -->
+    <div id="statusModal" class="modal">
+      <div class="modal-content">
+        <span class="close" onclick="closeStatusModal()">&times;</span>
+        <h2 id="statusTitle">Status</h2>
+        <p id="statusMessage"></p>
+      </div>
+    </div>
+    <div></div>
     <div class="control-panel">
       <h1>User Control Panel</h1>
-      <select id="userSelector">
-        <!-- <option value="user1">User 1</option>
-        <option value="user2">User 2</option>
-        <option value="user3">User 3</option> -->
-      </select>
+      <select id="userSelector"></select>
       <div class="button-container">
         <button id="teleport">Teleport</button>
         <button id="kill">Kill</button>
         <button id="jumpscare">Jumpscare</button>
         <button id="say">Say</button>
+        <button id="execute">Execute Script</button>
       </div>
     </div>
 
@@ -163,34 +207,78 @@
         <button id="submitArgsButton">Submit</button>
       </div>
     </div>
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.35.4/ace.min.js"
+      integrity="sha512-H7UCM6x96TJikYn0n4wC+PVBshBTfF8N9gKvSr3nmXahYW3kGYFvxE/v1Q2Qp8b8NFUS6H6MfDvZO6V6YATzjw=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
 
     <script>
       const userSelector = document.getElementById("userSelector");
-      const buttons = document.querySelector(".button-container").children; 
+      const buttons = document.querySelector(".button-container").children;
 
       const modal = document.getElementById("myModal");
-      const span = document.getElementsByClassName("close")[0];
+      const span = document.getElementsByClassName("close")[1];
       const argsForm = document.getElementById("argsForm");
       const submitArgsButton = document.getElementById("submitArgsButton");
       const modalTitle = document.getElementById("modalTitle");
+      const statusModal = document.getElementById("statusModal");
+      // const stut
+      const statusTitle = document.getElementById("statusTitle");
+      const statusMessage = document.getElementById("statusMessage");
+
+      let editor;
+
+      function showStatusModal(status, message) {
+        statusTitle.textContent = status ? "Success" : "Error";
+        statusMessage.textContent = message;
+        statusTitle.style.color = status ? "green" : "red";
+        statusModal.style.display = "block";
+      }
+
+      function closeStatusModal() {
+        console.log("closing modal");
+
+        statusModal.classList.add("fade-out");
+
+        setTimeout(() => {
+          statusModal.style.display = "none";
+          statusModal.classList.remove("fade-out");
+        }, 150);
+      }
+
+      // showStatusModal(true, "Welcome!");
 
       let currentButtonPressed = null;
 
       const ws = new WebSocket("ws://localhost:3001/ws");
+
+      ws.onopen = async () => {
+        const token = await cookieStore.get("accessToken");
+        ws.send(JSON.stringify({ action: "newadmin", token: token.value }));
+
+        ws.onmessage = (event) => {
+          const data = JSON.parse(event.data);
+          if (data.action === "cmdresponse") {
+            showStatusModal(data.success, `${data.sender}: ${data.response}`);
+          }
+        };
+      };
 
       const openModal = (buttonType, args) => {
         argsForm.innerHTML = "";
 
         const userSelector = document.getElementById("userSelector");
         const selectedUser = userSelector.value;
-        if (!selectedUser) {
-          modalTitle.textContent = "Warning";
-          const message = document.createElement("p");
-          message.textContent = "You need to select a user";
-          argsForm.appendChild(message);
-          modal.style.display = "block";
-          return;
-        }
+        // if (!selectedUser) {
+        //   modalTitle.textContent = "Warning";
+        //   const message = document.createElement("p");
+        //   message.textContent = "You need to select a user";
+        //   argsForm.appendChild(message);
+        //   modal.style.display = "block";
+        //   return;
+        // }
 
         currentButtonPressed = buttonType;
 
@@ -207,19 +295,47 @@
           argsForm.appendChild(p);
         }
 
-        args.forEach(({ label, type, name, placeholder, required }) => {
-          const labelEl = document.createElement("label");
-          labelEl.textContent = label;
+        args.forEach(
+          ({ label, type, name, placeholder, required, options }) => {
+            const labelEl = document.createElement("label");
+            labelEl.textContent = label;
 
-          const inputEl = document.createElement("input");
-          inputEl.type = type;
-          inputEl.name = name;
-          inputEl.placeholder = placeholder || "";
-          inputEl.required = required || false;
+            let inputEl;
+            let codeEl;
 
-          argsForm.appendChild(labelEl);
-          argsForm.appendChild(inputEl);
-        });
+            if (type === "select") {
+              inputEl = document.createElement("select");
+              inputEl.name = name;
+              inputEl.required = required || false;
+
+              options.forEach((option) => {
+                const optionEl = document.createElement("option");
+                optionEl.value = option.value;
+                optionEl.textContent = option.text;
+                inputEl.appendChild(optionEl);
+              });
+            } else if (type === "code") {
+              inputEl = document.createElement("div");
+              inputEl.id = "editor";
+            } else {
+              inputEl = document.createElement("input");
+              inputEl.type = type;
+              inputEl.name = name;
+              inputEl.placeholder = placeholder || "";
+              inputEl.required = required || false;
+            }
+
+            argsForm.appendChild(labelEl);
+            argsForm.appendChild(inputEl);
+
+            if (type === "code") {
+              editor = ace.edit("editor");
+              editor.setTheme("ace/theme/monokai");
+              editor.session.setMode("ace/mode/lua");
+            }
+          }
+        );
+
         modal.style.display = "block";
       };
 
@@ -231,6 +347,9 @@
         if (event.target == modal) {
           modal.style.display = "none";
         }
+        if (event.target == statusModal) {
+          statusModal.style.display = "none";
+        }
       };
 
       submitArgsButton.onclick = async () => {
@@ -240,8 +359,12 @@
         }
 
         const formData = new FormData(argsForm);
-
         const data = {};
+
+        if (currentButtonPressed === "execute") {
+          formData.append("Code", editor.getValue());
+        }
+
         formData.forEach((value, key) => {
           data[key] = value;
         });
@@ -270,7 +393,18 @@
           },
         ],
         kill: [],
-        jumpscare: [],
+        jumpscare: [
+          {
+            label: "Select Option",
+            type: "select",
+            name: "type",
+            options: [
+              { value: "skibidi", text: "skibidi" },
+              { value: "balls", text: "balls" },
+            ],
+            required: true,
+          },
+        ],
         say: [
           {
             label: "Message",
@@ -278,8 +412,16 @@
             name: "Message",
             placeholder: "Message",
             required: true,
-          }
-        ]
+          },
+        ],
+        execute: [
+          {
+            label: "Code",
+            type: "code",
+            name: "Code",
+            required: true,
+          },
+        ],
       };
 
       const handleButtonClick = (buttonType) => {
@@ -332,10 +474,12 @@
       });
 
       (async () => {
-        await fetch('', {});
-
         await GetConnectedUsers();
       })();
+
+      setInterval(async () => {
+        await GetConnectedUsers();
+      }, 5000);
     </script>
   </body>
 </html>

