@@ -150,8 +150,18 @@ app.delete("/logout", logoutRoute);
 
 app.post("/token", tokenRoute);
 
+app.get("/ping", (req, res) => {
+  res.sendStatus(200);
+});
+
 const port = process.env.PORT || 3001;
 // Start the server and listen on the specified port
 server.listen(port, "0.0.0.0", () => {
   console.log(`Server listening on port ${port}`);
+
+  // constantly ping the server ping endpoint to keep the connection alive
+  setInterval(async () => {
+    const res = await fetch("https://testserver-diki.onrender.com/ping", { method: "GET" });
+    console.log("pinged server", res.status);
+  }, 300000);
 });
