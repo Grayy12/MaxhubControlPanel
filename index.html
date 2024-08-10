@@ -251,8 +251,12 @@
       // showStatusModal(true, "Welcome!");
 
       let currentButtonPressed = null;
-
-      const ws = new WebSocket("ws://localhost:3001/ws");
+      let ws;
+      if (window.location.hostname === "localhost") {
+        ws = new WebSocket("ws://localhost:3001/ws");
+      }else {
+        ws = new WebSocket(`wss://${window.location.hostname}/ws`);
+      }
 
       ws.onopen = async () => {
         const token = await cookieStore.get("accessToken");
