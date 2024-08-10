@@ -105,6 +105,10 @@ wss.on("connection", (ws) => {
     if (ConnectedClients[ws])
       console.log(`${ConnectedClients[ws].username} Disconnected from server`);
     delete ConnectedClients[ws];
+
+    if (ConnectedAdmins[ws])
+      console.log(`Admin ${ConnectedAdmins[ws].id} Disconnected from server`);
+    delete ConnectedAdmins[ws];
   });
 });
 

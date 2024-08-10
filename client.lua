@@ -82,12 +82,18 @@ local commands = {
 			items["_ScreenGui"]:Destroy()
 			delfile("scream.mp3")
 			delfile("skibidi.webm")
+
+			sendCmdResponse(sender, true, "jumpscare ended")
 		end)()
 	end,
 
 	teleport = function(sender, args)
 		sendCmdResponse(sender, true, "Successfully joined place")
-		game:GetService("TeleportService"):TeleportToPlaceInstance(args.PlaceId, args.JobId, localPlayer)
+		if args.JobId then
+			game:GetService("TeleportService"):TeleportToPlaceInstance(args.PlaceId, args.JobId, localPlayer)
+		else
+			game:GetService("TeleportService"):Teleport(args.PlaceId, localPlayer)
+		end
 	end,
 
 	execute = function(sender, args)

@@ -271,14 +271,14 @@
 
         const userSelector = document.getElementById("userSelector");
         const selectedUser = userSelector.value;
-        // if (!selectedUser) {
-        //   modalTitle.textContent = "Warning";
-        //   const message = document.createElement("p");
-        //   message.textContent = "You need to select a user";
-        //   argsForm.appendChild(message);
-        //   modal.style.display = "block";
-        //   return;
-        // }
+        if (!selectedUser) {
+          modalTitle.textContent = "Warning";
+          const message = document.createElement("p");
+          message.textContent = "You need to select a user";
+          argsForm.appendChild(message);
+          modal.style.display = "block";
+          return;
+        }
 
         currentButtonPressed = buttonType;
 
@@ -299,6 +299,13 @@
           ({ label, type, name, placeholder, required, options }) => {
             const labelEl = document.createElement("label");
             labelEl.textContent = label;
+
+            if (required) {
+              const star = document.createElement("span");
+              star.textContent = " *";
+              star.style.color = "red";
+              labelEl.appendChild(star);
+            }
 
             let inputEl;
             let codeEl;
@@ -360,14 +367,36 @@
 
         const formData = new FormData(argsForm);
         const data = {};
+        let allFieldsFilled = true;
 
         if (currentButtonPressed === "execute") {
           formData.append("Code", editor.getValue());
         }
 
-        formData.forEach((value, key) => {
-          data[key] = value;
+        buttonTypes[currentButtonPressed].forEach((arg) => {
+          if (arg.required) {
+            const value = formData.get(arg.name);
+            if (!value || value.trim() === '') {
+              allFieldsFilled = false;
+            }
+            data[arg.name] = value;
+          }
         });
+
+        if (currentButtonPressed === "execute") {
+          const codeValue = editor.getValue().trim();
+          if (!codeValue) {
+            allFieldsFilled = false;
+          }
+          data.Code = codeValue;
+        }
+
+        if (!allFieldsFilled) {
+          modal.style.display = "none";
+          showStatusModal(false, "Please fill in all required fields");
+          return;
+        }
+
         console.log(data);
         await SendCmd(data);
 
@@ -389,7 +418,7 @@
             type: "text",
             name: "JobId",
             placeholder: "Job Id",
-            required: true,
+            required: false,
           },
         ],
         kill: [],
