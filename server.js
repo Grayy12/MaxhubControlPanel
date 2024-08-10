@@ -49,9 +49,11 @@ function addNewUser(ws, { username, userid }) {
   // Check if the user is already connected.
   if (findUserByUsername(username)) {
     ws.close();
+  } else {
+    const clientId = userid; // Or use some unique identifier
+    console.log(`New user connected: ${username}`);
+    ConnectedClients[clientId] = { username, userid, ws };
   }
-  console.log(`New user connected: ${username}`);
-  ConnectedClients[ws] = { username, userid, ws };
 }
 
 function addNewAdmin(ws, { token }) {
@@ -161,7 +163,9 @@ server.listen(port, "0.0.0.0", () => {
 
   // constantly ping the server ping endpoint to keep the connection alive
   setInterval(async () => {
-    const res = await fetch("https://testserver-diki.onrender.com/ping", { method: "GET" });
+    const res = await fetch("https://testserver-diki.onrender.com/ping", {
+      method: "GET",
+    });
     console.log("pinged server", res.status);
   }, 300000);
 });
