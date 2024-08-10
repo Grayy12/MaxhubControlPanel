@@ -47,7 +47,7 @@ function findAdminById(id) {
 // Adds a new user to the list of connected clients.
 function addNewUser(ws, { username, userid }) {
   // Check if the user is already connected.
-  if (Object.values(ConnectedClients).some((user) => user.userid === userid)) {
+  if (findUserByUsername(username)) {
     ws.close();
   }
   console.log(`New user connected: ${username}`);
