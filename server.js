@@ -172,7 +172,8 @@ function findAdminById(id) {
 
 // Handle GET request to the root URL ("/").
 app.get("/", tokenHandler.authenticateToken, (req, res) => {
-  Responses[req.user.id] = [];
+  if (!Responses[req.user.id])
+    Responses[req.user.id] = [];
   res.sendFile(path.join(__dirname, "index.html"));
 });
 

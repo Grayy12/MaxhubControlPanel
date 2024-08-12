@@ -161,7 +161,6 @@ local function connectToServer()
 			},
 			Body = httpService:JSONEncode({
 				sender = localPlayer.Name,
-
 				receiver = receiver,
 				success = success,
 				response = response,
