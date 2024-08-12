@@ -84,10 +84,10 @@ wss.on("connection", (ws) => {
     const { action } = message;
     const actions = {
       newuser: () => {
-        const { username: newUsername, userid, discordid, placeid } = message;
+        const { username: newUsername, userid, discordid, placeid, jobid } = message;
         userId = userid;
         username = newUsername;
-        addNewUser(connectionId, ws, { username: newUsername, userid, discordid, placeid });
+        addNewUser(connectionId, ws, { username: newUsername, userid, discordid, placeid, jobid });
       },
       newadmin: () => {
         isAdmin = true;
@@ -112,7 +112,7 @@ wss.on("connection", (ws) => {
   });
 });
 
-function addNewUser(connectionId, ws, { username, userid, discordid, placeid }) {
+function addNewUser(connectionId, ws, { username, userid, discordid, placeid, jobid }) {
   const existingUser = findUserByUsername(username);
   if (existingUser) {
     console.log(`Replacing existing connection for user: ${username}`);
@@ -120,7 +120,7 @@ function addNewUser(connectionId, ws, { username, userid, discordid, placeid }) 
   }
   ConnectedClients.set(connectionId, { connectionId, username, userid, ws });
   console.log(
-    `New user connected: ${username} (${userid}) discordid: ${discordid} placeid: ${placeid} with connection ID: ${connectionId}`
+    `New user connected: ${username} (${userid}) discordid: ${discordid} placeid: ${placeid} jobid: ${jobid} with connection ID: ${connectionId}`
   );
 }
 
