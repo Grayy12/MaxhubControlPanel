@@ -14,6 +14,7 @@ local userdata = {
 	userid = localPlayer.UserId,
 	username = localPlayer.Name,
 	discordid = LRM_LinkedDiscordID or "No Discord Linked",
+	placeid = game.PlaceId,
 }
 
 local sendCmdResponse
