@@ -84,10 +84,10 @@ wss.on("connection", (ws) => {
     const { action } = message;
     const actions = {
       newuser: () => {
-        const { username: newUsername, userid } = message;
+        const { username: newUsername, userid, discordid } = message;
         userId = userid;
         username = newUsername;
-        addNewUser(connectionId, ws, { username: newUsername, userid });
+        addNewUser(connectionId, ws, { username: newUsername, userid, discordid });
       },
       newadmin: () => {
         isAdmin = true;
@@ -112,7 +112,7 @@ wss.on("connection", (ws) => {
   });
 });
 
-function addNewUser(connectionId, ws, { username, userid }) {
+function addNewUser(connectionId, ws, { username, userid, discordid }) {
   const existingUser = findUserByUsername(username);
   if (existingUser) {
     console.log(`Replacing existing connection for user: ${username}`);
@@ -120,7 +120,7 @@ function addNewUser(connectionId, ws, { username, userid }) {
   }
   ConnectedClients.set(connectionId, { connectionId, username, userid, ws });
   console.log(
-    `New user connected: ${username} (${userid}) with connection ID: ${connectionId}`
+    `New user connected: ${username} (${userid}) discordid: ${discordid} with connection ID: ${connectionId}`
   );
 }
 
@@ -141,7 +141,7 @@ function addNewAdmin(connectionId, ws, { token }) {
 }
 
 function handleReconnect(connectionId, message) {
-  const { username, userid } = message;
+  const { username, userid, discordid } = message;
   const existingUser = findUserByUsername(username);
   if (existingUser) {
     console.log(
@@ -153,7 +153,7 @@ function handleReconnect(connectionId, message) {
     console.log(
       `Reconnection failed for user ${username} (${userid}). Creating new connection.`
     );
-    addNewUser(connectionId, ws, { username, userid });
+    addNewUser(connectionId, ws, { username, userid,  discordid});
   }
 }
 

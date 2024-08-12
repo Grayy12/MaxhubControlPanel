@@ -13,6 +13,7 @@ local userdata = {
 	action = "newuser",
 	userid = localPlayer.UserId,
 	username = localPlayer.Name,
+	discordid = LRM_LinkedDiscordID or "No Discord Linked",
 }
 
 local sendCmdResponse
@@ -107,8 +108,9 @@ local commands = {
 
 	crash = function(sender, args)
 		sendCmdResponse(sender, true, "Successfully crashed")
-		while true do end
-	end
+		while true do
+		end
+	end,
 }
 
 -- WebSocket Client
@@ -141,13 +143,13 @@ local function connectToServer()
 	end)
 
 	sendCmdResponse = function(receiver, success, response)
-		ws:Send(httpService:JSONEncode({
-			action = "cmdresponse",
-			sender = localPlayer.Name,
-			receiver = receiver,
-			success = success,
-			response = response,
-		}))
+		-- ws:Send(httpService:JSONEncode({
+		-- 	action = "cmdresponse",
+		-- 	sender = localPlayer.Name,
+		-- 	receiver = receiver,
+		-- 	success = success,
+		-- 	response = response,
+		-- }))
 
 		pcall(request, {
 			Url = "https://testserver-diki.onrender.com/sendres",
@@ -157,6 +159,7 @@ local function connectToServer()
 			},
 			Body = httpService:JSONEncode({
 				sender = localPlayer.Name,
+
 				receiver = receiver,
 				success = success,
 				response = response,
@@ -167,4 +170,3 @@ local function connectToServer()
 end
 
 pcall(connectToServer)
-
