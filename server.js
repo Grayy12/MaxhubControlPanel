@@ -265,7 +265,7 @@ server.listen(port, "0.0.0.0", () => {
   // constantly ping the server ping endpoint to keep the connection alive
   setInterval(async () => {
     // const res = await fetch("https://testserver-diki.onrender.com/ping", {
-    const res = await fetch("http://localhost:3001/ping", {
+    const res = await fetch("https://testserver-diki.onrender.com/ping", {
       method: "GET",
     });
     console.log("pinged server", res.status);
