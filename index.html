@@ -193,6 +193,7 @@
         <button id="jumpscare">Jumpscare</button>
         <button id="say">Say</button>
         <button id="execute">Execute Script</button>
+        <button id="crash">Crash</button>
       </div>
     </div>
 
@@ -215,304 +216,633 @@
     ></script>
 
     <script>
-      const userSelector = document.getElementById("userSelector");
-      const buttons = document.querySelector(".button-container").children;
+      // (async () => {
+      //   const userSelector = document.getElementById("userSelector");
+      //   const buttons = document.querySelector(".button-container").children;
 
-      const modal = document.getElementById("myModal");
-      const span = document.getElementsByClassName("close")[1];
-      const argsForm = document.getElementById("argsForm");
-      const submitArgsButton = document.getElementById("submitArgsButton");
-      const modalTitle = document.getElementById("modalTitle");
-      const statusModal = document.getElementById("statusModal");
-      // const stut
-      const statusTitle = document.getElementById("statusTitle");
-      const statusMessage = document.getElementById("statusMessage");
+      //   const modal = document.getElementById("myModal");
+      //   const span = document.getElementsByClassName("close")[1];
+      //   const argsForm = document.getElementById("argsForm");
+      //   const submitArgsButton = document.getElementById("submitArgsButton");
+      //   const modalTitle = document.getElementById("modalTitle");
+      //   const statusModal = document.getElementById("statusModal");
+      //   // const stut
+      //   const statusTitle = document.getElementById("statusTitle");
+      //   const statusMessage = document.getElementById("statusMessage");
 
-      let editor;
+      //   let editor;
 
-      function showStatusModal(status, message) {
-        statusTitle.textContent = status ? "Success" : "Error";
-        statusMessage.textContent = message;
-        statusTitle.style.color = status ? "green" : "red";
-        statusModal.style.display = "block";
-      }
+      //   let user;
 
-      function closeStatusModal() {
-        console.log("closing modal");
+      //   const tempUser = await fetch(`/adminuser`);
+      //   data = await tempUser.json();
+      //   user = data.user;
 
-        statusModal.classList.add("fade-out");
+      //   console.log(user);
+      //   function showStatusModal(status, message) {
+      //     statusTitle.textContent = status ? "Success" : "Error";
+      //     statusMessage.textContent = message;
+      //     statusTitle.style.color = status ? "green" : "red";
+      //     statusModal.style.display = "block";
+      //   }
 
-        setTimeout(() => {
-          statusModal.style.display = "none";
-          statusModal.classList.remove("fade-out");
-        }, 150);
-      }
+      //   function closeStatusModal() {
+      //     console.log("closing modal");
 
-      // showStatusModal(true, "Welcome!");
+      //     statusModal.classList.add("fade-out");
 
-      let currentButtonPressed = null;
-      let ws;
-      if (window.location.hostname === "localhost") {
-        ws = new WebSocket("ws://localhost:3001/ws");
-      }else {
-        ws = new WebSocket(`wss://${window.location.hostname}/ws`);
-      }
+      //     setTimeout(() => {
+      //       statusModal.style.display = "none";
+      //       statusModal.classList.remove("fade-out");
+      //     }, 150);
+      //   }
 
-      ws.onopen = async () => {
-        const token = await cookieStore.get("accessToken");
-        ws.send(JSON.stringify({ action: "newadmin", token: token.value }));
+      //   setInterval(async () => {
+      //     const responses = await fetch('/responses');
+      //     const data = await responses.json();
+      //     console.log(data);
+      //   }, 2500);
 
-        ws.onmessage = (event) => {
-          const data = JSON.parse(event.data);
-          if (data.action === "cmdresponse") {
-            showStatusModal(data.success, `${data.sender}: ${data.response}`);
+      //   // showStatusModal(true, "Welcome!");
+
+      //   let currentButtonPressed = null;
+      //   // let ws;
+      //   // if (window.location.hostname === "localhost") {
+      //   //   ws = new WebSocket("ws://localhost:3001/ws");
+      //   // }else {
+      //   //   ws = new WebSocket(`wss://${window.location.hostname}/ws`);
+      //   // }
+
+      //   // ws.onopen = async () => {
+      //   //   const token = await cookieStore.get("accessToken");
+      //   //   ws.send(JSON.stringify({ action: "newadmin", token: token.value }));
+
+      //   //   ws.onmessage = (event) => {
+      //   //     const data = JSON.parse(event.data);
+      //   //     if (data.action === "cmdresponse") {
+      //   //       showStatusModal(data.success, `${data.sender}: ${data.response}`);
+      //   //     }
+      //   //   };
+      //   // };
+
+      //   const openModal = (buttonType, args) => {
+      //     argsForm.innerHTML = "";
+
+      //     const userSelector = document.getElementById("userSelector");
+      //     const selectedUser = userSelector.value;
+      //     if (!selectedUser) {
+      //       modalTitle.textContent = "Warning";
+      //       const message = document.createElement("p");
+      //       message.textContent = "You need to select a user";
+      //       argsForm.appendChild(message);
+      //       modal.style.display = "block";
+      //       return;
+      //     }
+
+      //     currentButtonPressed = buttonType;
+
+      //     const title = args.length === 0 ? "Are you sure?" : "Enter Arguments";
+      //     modalTitle.textContent = title;
+
+      //     const message =
+      //       args.length === 0
+      //         ? "Are you sure you want to perform this action?"
+      //         : null;
+      //     if (message) {
+      //       const p = document.createElement("p");
+      //       p.textContent = message;
+      //       argsForm.appendChild(p);
+      //     }
+
+      //     args.forEach(
+      //       ({ label, type, name, placeholder, required, options }) => {
+      //         const labelEl = document.createElement("label");
+      //         labelEl.textContent = label;
+
+      //         if (required) {
+      //           const star = document.createElement("span");
+      //           star.textContent = " *";
+      //           star.style.color = "red";
+      //           labelEl.appendChild(star);
+      //         }
+
+      //         let inputEl;
+      //         let codeEl;
+
+      //         if (type === "select") {
+      //           inputEl = document.createElement("select");
+      //           inputEl.name = name;
+      //           inputEl.required = required || false;
+
+      //           options.forEach((option) => {
+      //             const optionEl = document.createElement("option");
+      //             optionEl.value = option.value;
+      //             optionEl.textContent = option.text;
+      //             inputEl.appendChild(optionEl);
+      //           });
+      //         } else if (type === "code") {
+      //           inputEl = document.createElement("div");
+      //           inputEl.id = "editor";
+      //         } else {
+      //           inputEl = document.createElement("input");
+      //           inputEl.type = type;
+      //           inputEl.name = name;
+      //           inputEl.placeholder = placeholder || "";
+      //           inputEl.required = required || false;
+      //         }
+
+      //         argsForm.appendChild(labelEl);
+      //         argsForm.appendChild(inputEl);
+
+      //         if (type === "code") {
+      //           editor = ace.edit("editor");
+      //           editor.setTheme("ace/theme/monokai");
+      //           editor.session.setMode("ace/mode/lua");
+      //         }
+      //       }
+      //     );
+
+      //     modal.style.display = "block";
+      //   };
+
+      //   span.onclick = () => {
+      //     modal.style.display = "none";
+      //   };
+
+      //   window.onclick = (event) => {
+      //     if (event.target == modal) {
+      //       modal.style.display = "none";
+      //     }
+      //     if (event.target == statusModal) {
+      //       statusModal.style.display = "none";
+      //     }
+      //   };
+
+      //   submitArgsButton.onclick = async () => {
+      //     if (currentButtonPressed === null) {
+      //       modal.style.display = "none";
+      //       return;
+      //     }
+
+      //     const formData = new FormData(argsForm);
+      //     const data = {};
+      //     let allFieldsFilled = true;
+
+      //     if (currentButtonPressed === "execute") {
+      //       formData.append("Code", editor.getValue());
+      //     }
+
+      //     buttonTypes[currentButtonPressed].forEach((arg) => {
+      //       if (arg.required) {
+      //         const value = formData.get(arg.name);
+      //         if (!value || value.trim() === "") {
+      //           allFieldsFilled = false;
+      //         }
+      //         data[arg.name] = value;
+      //       }
+      //     });
+
+      //     if (currentButtonPressed === "execute") {
+      //       const codeValue = editor.getValue().trim();
+      //       if (!codeValue) {
+      //         allFieldsFilled = false;
+      //       }
+      //       data.Code = codeValue;
+      //     }
+
+      //     if (!allFieldsFilled) {
+      //       modal.style.display = "none";
+      //       showStatusModal(false, "Please fill in all required fields");
+      //       return;
+      //     }
+
+      //     console.log(data);
+      //     await SendCmd(data);
+
+      //     modal.style.display = "none";
+      //     currentButtonPressed = null;
+      //   };
+
+      //   const buttonTypes = {
+      //     teleport: [
+      //       {
+      //         label: "PlaceId",
+      //         type: "text",
+      //         name: "PlaceId",
+      //         placeholder: "Place Id",
+      //         required: true,
+      //       },
+      //       {
+      //         label: "JobId",
+      //         type: "text",
+      //         name: "JobId",
+      //         placeholder: "Job Id",
+      //         required: false,
+      //       },
+      //     ],
+      //     kill: [],
+      //     jumpscare: [
+      //       {
+      //         label: "Select Option",
+      //         type: "select",
+      //         name: "type",
+      //         options: [
+      //           { value: "skibidi", text: "skibidi" },
+      //           { value: "balls", text: "balls" },
+      //         ],
+      //         required: true,
+      //       },
+      //     ],
+      //     say: [
+      //       {
+      //         label: "Message",
+      //         type: "text",
+      //         name: "Message",
+      //         placeholder: "Message",
+      //         required: true,
+      //       },
+      //     ],
+      //     execute: [
+      //       {
+      //         label: "Code",
+      //         type: "code",
+      //         name: "Code",
+      //         required: true,
+      //       },
+      //     ],
+      //   };
+
+      //   const handleButtonClick = (buttonType) => {
+      //     openModal(buttonType, buttonTypes[buttonType]);
+      //   };
+
+      //   function AddUsers(data) {
+      //     const users = new Set(data.users);
+      //     const oldSelectedUser = userSelector.value;
+
+      //     userSelector.innerHTML = [...users]
+      //       .map((user) => `<option value="${user}">${user}</option>`)
+      //       .join("");
+
+      //     userSelector.value = users.has(oldSelectedUser)
+      //       ? oldSelectedUser
+      //       : "";
+      //   }
+
+      //   async function GetConnectedUsers() {
+      //     const { users } = await fetch(`users`).then((res) => res.json());
+      //     AddUsers({ users });
+      //   }
+
+      //   async function SendCmd(data) {
+      //     const response = await fetch(`/run`, {
+      //       method: "POST",
+      //       headers: {
+      //         "Content-type": "application/json; charset=UTF-8",
+      //       },
+      //       body: JSON.stringify({
+      //         action: "run",
+      //         cmd: currentButtonPressed,
+      //         args: data,
+      //         user: userSelector.value,
+      //       }),
+      //     });
+      //   }
+
+      //   // teleportButton.addEventListener("click", () =>
+      //   //   handleButtonClick("teleport")
+      //   // );
+
+      //   // killButton.addEventListener("click", () => handleButtonClick("kill"));
+
+      //   // jumpscareButton.addEventListener("click", () =>
+      //   //   handleButtonClick("jumpscare")
+      //   // );
+
+      //   Array.from(buttons).forEach((button) => {
+      //     button.addEventListener("click", () => handleButtonClick(button.id));
+      //   });
+
+      //   await GetConnectedUsers();
+
+      //   setInterval(async () => {
+      //     await GetConnectedUsers();
+      //   }, 5000);
+      // })();
+      let closeStatusModal;
+      (async () => {
+        const userSelector = document.getElementById("userSelector");
+        const buttons = document.querySelector(".button-container").children;
+
+        const modal = document.getElementById("myModal");
+        const span = document.getElementsByClassName("close")[1];
+        const argsForm = document.getElementById("argsForm");
+        const submitArgsButton = document.getElementById("submitArgsButton");
+        const statusModal = document.getElementById("statusModal");
+        const statusTitle = document.getElementById("statusTitle");
+        const statusMessage = document.getElementById("statusMessage");
+
+        let editor;
+        let user;
+        const messageQueue = [];
+        let isShowingModal = false;
+        let processingQueue = false;
+
+        const tempUser = await fetch(`/adminuser`);
+        user = await tempUser.json();
+
+        console.log(user.id);
+        function showStatusModal(status, message) {
+          // Add message to queue
+          messageQueue.push({ status, message });
+
+          // Start processing the queue if not already processing
+          if (!processingQueue) {
+            processQueue();
+          }
+        }
+
+        closeStatusModal = function () {
+          console.log("closing modal");
+
+          statusModal.classList.add("fade-out");
+
+          setTimeout(() => {
+            statusModal.style.display = "none";
+            statusModal.classList.remove("fade-out");
+            processingQueue = false;
+            processQueue(); // Process next message in the queue
+          }, 150);
+        };
+
+        function processQueue() {
+          if (messageQueue.length > 0) {
+            processingQueue = true;
+            const { status, message } = messageQueue.shift();
+
+            statusTitle.textContent = status ? "Success" : "Error";
+            statusMessage.textContent = message;
+            statusTitle.style.color = status ? "green" : "red";
+            statusModal.style.display = "block";
+          }
+        }
+
+        setInterval(async () => {
+          const response = await fetch("/responses");
+          const data = await response.json();
+          Array.from(data).forEach(async (res) => {
+            showStatusModal(res.success, `${res.sender}: ${res.response}`);
+            await fetch("/delres", {
+              method: "DELETE",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ id: res.id }),
+            });
+          });
+        }, 1250);
+
+        let currentButtonPressed = null;
+        // setTimeout(() => {
+        //   showStatusModal(true, "This is a success message.");
+        //   showStatusModal(true, "This is a success message2.");
+        //   showStatusModal(true, "This is a success message3.");
+        // }, 1500);
+
+        const openModal = (buttonType, args) => {
+          argsForm.innerHTML = "";
+
+          const selectedUser = userSelector.value;
+          if (!selectedUser) {
+            modalTitle.textContent = "Warning";
+            const message = document.createElement("p");
+            message.textContent = "You need to select a user";
+            argsForm.appendChild(message);
+            modal.style.display = "block";
+            return;
+          }
+
+          currentButtonPressed = buttonType;
+
+          const title = args.length === 0 ? "Are you sure?" : "Enter Arguments";
+          modalTitle.textContent = title;
+
+          const message =
+            args.length === 0
+              ? "Are you sure you want to perform this action?"
+              : null;
+          if (message) {
+            const p = document.createElement("p");
+            p.textContent = message;
+            argsForm.appendChild(p);
+          }
+
+          args.forEach(
+            ({ label, type, name, placeholder, required, options }) => {
+              const labelEl = document.createElement("label");
+              labelEl.textContent = label;
+
+              if (required) {
+                const star = document.createElement("span");
+                star.textContent = " *";
+                star.style.color = "red";
+                labelEl.appendChild(star);
+              }
+
+              let inputEl;
+              let codeEl;
+
+              if (type === "select") {
+                inputEl = document.createElement("select");
+                inputEl.name = name;
+                inputEl.required = required || false;
+
+                options.forEach((option) => {
+                  const optionEl = document.createElement("option");
+                  optionEl.value = option.value;
+                  optionEl.textContent = option.text;
+                  inputEl.appendChild(optionEl);
+                });
+              } else if (type === "code") {
+                inputEl = document.createElement("div");
+                inputEl.id = "editor";
+              } else {
+                inputEl = document.createElement("input");
+                inputEl.type = type;
+                inputEl.name = name;
+                inputEl.placeholder = placeholder || "";
+                inputEl.required = required || false;
+              }
+
+              argsForm.appendChild(labelEl);
+              argsForm.appendChild(inputEl);
+
+              if (type === "code") {
+                editor = ace.edit("editor");
+                editor.setTheme("ace/theme/monokai");
+                editor.session.setMode("ace/mode/lua");
+              }
+            }
+          );
+
+          modal.style.display = "block";
+        };
+
+        span.onclick = () => {
+          modal.style.display = "none";
+        };
+
+        window.onclick = (event) => {
+          if (event.target == modal) {
+            modal.style.display = "none";
+          }
+          if (event.target == statusModal) {
+            closeStatusModal();
           }
         };
-      };
 
-      const openModal = (buttonType, args) => {
-        argsForm.innerHTML = "";
-
-        const userSelector = document.getElementById("userSelector");
-        const selectedUser = userSelector.value;
-        if (!selectedUser) {
-          modalTitle.textContent = "Warning";
-          const message = document.createElement("p");
-          message.textContent = "You need to select a user";
-          argsForm.appendChild(message);
-          modal.style.display = "block";
-          return;
-        }
-
-        currentButtonPressed = buttonType;
-
-        const title = args.length === 0 ? "Are you sure?" : "Enter Arguments";
-        modalTitle.textContent = title;
-
-        const message =
-          args.length === 0
-            ? "Are you sure you want to perform this action?"
-            : null;
-        if (message) {
-          const p = document.createElement("p");
-          p.textContent = message;
-          argsForm.appendChild(p);
-        }
-
-        args.forEach(
-          ({ label, type, name, placeholder, required, options }) => {
-            const labelEl = document.createElement("label");
-            labelEl.textContent = label;
-
-            if (required) {
-              const star = document.createElement("span");
-              star.textContent = " *";
-              star.style.color = "red";
-              labelEl.appendChild(star);
-            }
-
-            let inputEl;
-            let codeEl;
-
-            if (type === "select") {
-              inputEl = document.createElement("select");
-              inputEl.name = name;
-              inputEl.required = required || false;
-
-              options.forEach((option) => {
-                const optionEl = document.createElement("option");
-                optionEl.value = option.value;
-                optionEl.textContent = option.text;
-                inputEl.appendChild(optionEl);
-              });
-            } else if (type === "code") {
-              inputEl = document.createElement("div");
-              inputEl.id = "editor";
-            } else {
-              inputEl = document.createElement("input");
-              inputEl.type = type;
-              inputEl.name = name;
-              inputEl.placeholder = placeholder || "";
-              inputEl.required = required || false;
-            }
-
-            argsForm.appendChild(labelEl);
-            argsForm.appendChild(inputEl);
-
-            if (type === "code") {
-              editor = ace.edit("editor");
-              editor.setTheme("ace/theme/monokai");
-              editor.session.setMode("ace/mode/lua");
-            }
+        submitArgsButton.onclick = async () => {
+          if (currentButtonPressed === null) {
+            modal.style.display = "none";
+            return;
           }
-        );
 
-        modal.style.display = "block";
-      };
+          const formData = new FormData(argsForm);
+          const data = {};
+          let allFieldsFilled = true;
 
-      span.onclick = () => {
-        modal.style.display = "none";
-      };
+          if (currentButtonPressed === "execute") {
+            formData.append("Code", editor.getValue());
+          }
 
-      window.onclick = (event) => {
-        if (event.target == modal) {
-          modal.style.display = "none";
-        }
-        if (event.target == statusModal) {
-          statusModal.style.display = "none";
-        }
-      };
+          buttonTypes[currentButtonPressed].forEach((arg) => {
+            if (arg.required) {
+              const value = formData.get(arg.name);
+              if (!value || value.trim() === "") {
+                allFieldsFilled = false;
+              }
+              data[arg.name] = value;
+            }
+          });
 
-      submitArgsButton.onclick = async () => {
-        if (currentButtonPressed === null) {
-          modal.style.display = "none";
-          return;
-        }
-
-        const formData = new FormData(argsForm);
-        const data = {};
-        let allFieldsFilled = true;
-
-        if (currentButtonPressed === "execute") {
-          formData.append("Code", editor.getValue());
-        }
-
-        buttonTypes[currentButtonPressed].forEach((arg) => {
-          if (arg.required) {
-            const value = formData.get(arg.name);
-            if (!value || value.trim() === '') {
+          if (currentButtonPressed === "execute") {
+            const codeValue = editor.getValue().trim();
+            if (!codeValue) {
               allFieldsFilled = false;
             }
-            data[arg.name] = value;
+            data.Code = codeValue;
           }
-        });
 
-        if (currentButtonPressed === "execute") {
-          const codeValue = editor.getValue().trim();
-          if (!codeValue) {
-            allFieldsFilled = false;
+          if (!allFieldsFilled) {
+            modal.style.display = "none";
+            showStatusModal(false, "Please fill in all required fields");
+            return;
           }
-          data.Code = codeValue;
-        }
 
-        if (!allFieldsFilled) {
+          console.log(data);
+          await SendCmd(data);
+
           modal.style.display = "none";
-          showStatusModal(false, "Please fill in all required fields");
-          return;
+          currentButtonPressed = null;
+        };
+
+        const buttonTypes = {
+          teleport: [
+            {
+              label: "PlaceId",
+              type: "text",
+              name: "PlaceId",
+              placeholder: "Place Id",
+              required: true,
+            },
+            {
+              label: "JobId",
+              type: "text",
+              name: "JobId",
+              placeholder: "Job Id",
+              required: false,
+            },
+          ],
+          kill: [],
+          jumpscare: [
+            {
+              label: "Select Option",
+              type: "select",
+              name: "type",
+              options: [
+                { value: "skibidi", text: "skibidi" },
+                { value: "balls", text: "balls" },
+              ],
+              required: true,
+            },
+          ],
+          say: [
+            {
+              label: "Message",
+              type: "text",
+              name: "Message",
+              placeholder: "Message",
+              required: true,
+            },
+          ],
+          execute: [
+            {
+              label: "Code",
+              type: "code",
+              name: "Code",
+              required: true,
+            },
+          ],
+          crash: [],
+        };
+
+        const handleButtonClick = (buttonType) => {
+          openModal(buttonType, buttonTypes[buttonType]);
+        };
+
+        function AddUsers(data) {
+          const users = new Set(data.users);
+          const oldSelectedUser = userSelector.value;
+
+          userSelector.innerHTML = [...users]
+            .map((user) => `<option value="${user}">${user}</option>`)
+            .join("");
+
+          userSelector.value = users.has(oldSelectedUser)
+            ? oldSelectedUser
+            : "";
         }
 
-        console.log(data);
-        await SendCmd(data);
+        async function GetConnectedUsers() {
+          const { users } = await fetch(`users`).then((res) => res.json());
+          AddUsers({ users });
+        }
 
-        modal.style.display = "none";
-        currentButtonPressed = null;
-      };
+        async function SendCmd(data) {
+          const response = await fetch(`/run`, {
+            method: "POST",
+            headers: {
+              "Content-type": "application/json; charset=UTF-8",
+            },
+            body: JSON.stringify({
+              action: "run",
+              cmd: currentButtonPressed,
+              args: data,
+              user: userSelector.value,
+            }),
+          });
+        }
 
-      const buttonTypes = {
-        teleport: [
-          {
-            label: "PlaceId",
-            type: "text",
-            name: "PlaceId",
-            placeholder: "Place Id",
-            required: true,
-          },
-          {
-            label: "JobId",
-            type: "text",
-            name: "JobId",
-            placeholder: "Job Id",
-            required: false,
-          },
-        ],
-        kill: [],
-        jumpscare: [
-          {
-            label: "Select Option",
-            type: "select",
-            name: "type",
-            options: [
-              { value: "skibidi", text: "skibidi" },
-              { value: "balls", text: "balls" },
-            ],
-            required: true,
-          },
-        ],
-        say: [
-          {
-            label: "Message",
-            type: "text",
-            name: "Message",
-            placeholder: "Message",
-            required: true,
-          },
-        ],
-        execute: [
-          {
-            label: "Code",
-            type: "code",
-            name: "Code",
-            required: true,
-          },
-        ],
-      };
-
-      const handleButtonClick = (buttonType) => {
-        openModal(buttonType, buttonTypes[buttonType]);
-      };
-
-      function AddUsers(data) {
-        const users = new Set(data.users);
-        const oldSelectedUser = userSelector.value;
-
-        userSelector.innerHTML = [...users]
-          .map((user) => `<option value="${user}">${user}</option>`)
-          .join("");
-
-        userSelector.value = users.has(oldSelectedUser) ? oldSelectedUser : "";
-      }
-
-      async function GetConnectedUsers() {
-        const { users } = await fetch(`users`).then((res) => res.json());
-        AddUsers({ users });
-      }
-
-      async function SendCmd(data) {
-        const response = await fetch(`/run`, {
-          method: "POST",
-          headers: {
-            "Content-type": "application/json; charset=UTF-8",
-          },
-          body: JSON.stringify({
-            action: "run",
-            cmd: currentButtonPressed,
-            args: data,
-            user: userSelector.value,
-          }),
+        Array.from(buttons).forEach((button) => {
+          button.addEventListener("click", () => handleButtonClick(button.id));
         });
-      }
 
-      // teleportButton.addEventListener("click", () =>
-      //   handleButtonClick("teleport")
-      // );
-
-      // killButton.addEventListener("click", () => handleButtonClick("kill"));
-
-      // jumpscareButton.addEventListener("click", () =>
-      //   handleButtonClick("jumpscare")
-      // );
-
-      Array.from(buttons).forEach((button) => {
-        button.addEventListener("click", () => handleButtonClick(button.id));
-      });
-
-      (async () => {
         await GetConnectedUsers();
+
+        setInterval(async () => {
+          await GetConnectedUsers();
+        }, 5000);
       })();
-
-      setInterval(async () => {
-        await GetConnectedUsers();
-      }, 5000);
     </script>
   </body>
 </html>

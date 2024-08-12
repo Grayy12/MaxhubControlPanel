@@ -19,103 +19,160 @@ const wss = new WebSocket.Server({
   path: "/ws",
 });
 
-const ConnectedClients = {};
-const ConnectedAdmins = {};
-
 // Set up middleware.
 app.use(express.json());
 app.use(cookieParser());
 
 // Returns an array of connected user names.
 function getConnectedUsers() {
-  return Object.values(ConnectedClients).map(({ username }) => username);
-}
-
-// Finds a user by their username.
-function findUserByUsername(username) {
-  return Object.values(ConnectedClients).find(
-    ({ username: userUsername }) => userUsername === username
-  );
-}
-
-function findAdminById(id) {
-  return Object.values(ConnectedAdmins).find(
-    ({ id: adminId }) => adminId === id
-  );
-}
-
-// Adds a new user to the list of connected clients.
-function addNewUser(ws, { username, userid }) {
-  // Check if the user is already connected.
-  if (findUserByUsername(username)) {
-    ws.close();
-  } else {
-    const clientId = userid; // Or use some unique identifier
-    console.log(`New user connected: ${username}`);
-    ConnectedClients[clientId] = { username, userid, ws };
-  }
-}
-
-function addNewAdmin(ws, { token }) {
-  const user = tokenHandler.getUserFromToken(token);
-  if (user) {
-    console.log(`New admin connected: ${user.id}`);
-    ConnectedAdmins[ws] = { id: user.id, ws };
-  }
+  return Array.from(ConnectedClients.values()).map(({ username }) => username);
 }
 
 function handleResponse(message) {
   const { sender, receiver, success, response } = message;
-  const admin = findAdminById(receiver);
-  admin?.ws?.send(
-    JSON.stringify({ action: "cmdresponse", sender, success, response })
-  );
+  for (const [_, admin] of ConnectedAdmins.entries()) {
+    if (admin.id === receiver) {
+      admin.ws.send(
+        JSON.stringify({ action: "cmdresponse", sender, success, response })
+      );
+      break;
+    }
+  }
 }
 
-// Handle new WebSocket connections.
-wss.on("connection", (ws) => {
-  // console.log("Connected to server");
+const ConnectedClients = new Map();
+const ConnectedAdmins = new Map();
+const Responses = {};
+const { v4: uuidv4 } = require("uuid");
 
-  // Set up a ping interval to keep the connection alive.
+wss.on("connection", (ws) => {
+  const connectionId = uuidv4();
+  let isAdmin = false;
+  let userId = null;
+  let username = null;
+
+  ws.connectionId = connectionId;
+
   const pingInterval = setInterval(() => {
     if (ws.readyState === WebSocket.OPEN) {
       ws.ping(() => {});
+    } else if (ws.readyState === WebSocket.CLOSED) {
+      clearInterval(pingInterval);
+      handleDisconnection(connectionId);
     }
   }, 30000);
 
-  // Handle incoming messages.
+  const handleDisconnection = (connId) => {
+    if (isAdmin) {
+      const admin = ConnectedAdmins.get(connId);
+      if (admin) {
+        console.log(`Admin ${admin.id} disconnected from server`);
+        ConnectedAdmins.delete(connId);
+      }
+    } else if (userId) {
+      const client = ConnectedClients.get(connId);
+      if (client) {
+        console.log(
+          `User ${client.username} (${client.userid}) disconnected from server`
+        );
+        ConnectedClients.delete(connId);
+      }
+    }
+  };
+
   const handleMessage = (message) => {
     const { action } = message;
     const actions = {
-      newuser: () =>
-        addNewUser(ws, { username: message.username, userid: message.userid }),
-      newadmin: () => addNewAdmin(ws, { token: message.token }),
+      newuser: () => {
+        const { username: newUsername, userid } = message;
+        userId = userid;
+        username = newUsername;
+        addNewUser(connectionId, ws, { username: newUsername, userid });
+      },
+      newadmin: () => {
+        isAdmin = true;
+        addNewAdmin(connectionId, ws, { token: message.token });
+      },
       cmdresponse: () => handleResponse(message),
+      reconnect: () => handleReconnect(connectionId, message),
     };
-    actions[action]?.(); // Execute the corresponding action.
+    actions[action]?.();
   };
 
-  // Handle incoming messages.
   ws.on("message", (data) => handleMessage(JSON.parse(data.toString())));
 
-  // Handle WebSocket errors.
-  ws.on("error", console.error);
+  ws.on("error", (error) => {
+    console.error("WebSocket error:", error);
+    handleDisconnection(connectionId);
+  });
 
-  // Handle WebSocket close events.
   ws.on("close", () => {
     clearInterval(pingInterval);
-    if (ConnectedClients[ws])
-      console.log(`${ConnectedClients[ws].username} Disconnected from server`);
-    delete ConnectedClients[ws];
-
-    if (ConnectedAdmins[ws])
-      console.log(`Admin ${ConnectedAdmins[ws].id} Disconnected from server`);
-    delete ConnectedAdmins[ws];
+    handleDisconnection(connectionId);
   });
 });
 
+function addNewUser(connectionId, ws, { username, userid }) {
+  const existingUser = findUserByUsername(username);
+  if (existingUser) {
+    console.log(`Replacing existing connection for user: ${username}`);
+    ConnectedClients.delete(existingUser.connectionId);
+  }
+  ConnectedClients.set(connectionId, { connectionId, username, userid, ws });
+  console.log(
+    `New user connected: ${username} (${userid}) with connection ID: ${connectionId}`
+  );
+}
+
+function addNewAdmin(connectionId, ws, { token }) {
+  const user = tokenHandler.getUserFromToken(token);
+  if (user) {
+    console.log(
+      `Admin connected: ${user.id} with connection ID: ${connectionId}`
+    );
+    // Remove any existing connection for this admin
+    for (const [existingConnId, admin] of ConnectedAdmins.entries()) {
+      if (admin.id === user.id) {
+        ConnectedAdmins.delete(existingConnId);
+      }
+    }
+    ConnectedAdmins.set(connectionId, { connectionId, id: user.id, ws });
+  }
+}
+
+function handleReconnect(connectionId, message) {
+  const { username, userid } = message;
+  const existingUser = findUserByUsername(username);
+  if (existingUser) {
+    console.log(
+      `User ${username} (${userid}) reconnected with new connection ID: ${connectionId}`
+    );
+    ConnectedClients.delete(existingUser.connectionId);
+    ConnectedClients.set(connectionId, { ...existingUser, connectionId, ws });
+  } else {
+    console.log(
+      `Reconnection failed for user ${username} (${userid}). Creating new connection.`
+    );
+    addNewUser(connectionId, ws, { username, userid });
+  }
+}
+
+function findUserByUsername(username) {
+  for (const user of ConnectedClients.values()) {
+    if (user.username === username) {
+      return user;
+    }
+  }
+  return null;
+}
+
+function findAdminById(id) {
+  return [...ConnectedAdmins.values()].find((admin) => admin.id === id);
+}
+
 // Handle GET request to the root URL ("/").
 app.get("/", tokenHandler.authenticateToken, (req, res) => {
+  Responses[req.user.id] = [];
   res.sendFile(path.join(__dirname, "index.html"));
 });
 
@@ -131,19 +188,59 @@ app.get("/users", tokenHandler.authenticateToken, (req, res) => {
   res.send({ users: users });
 });
 
-// Route for running a command on a specific user
 app.post("/run", tokenHandler.authenticateToken, (req, res) => {
   const { user, cmd, args } = req.body;
   const userExists = findUserByUsername(user);
 
   if (userExists) {
-    console.log(user, cmd, args);
-    userExists.ws.send(
-      JSON.stringify({ sender: req.user.id, action: "run", cmd, args })
+    console.log(
+      `Sending command to user: ${user}, Command: ${cmd}, Args: ${args}, Connection ID: ${userExists.connectionId}`
     );
+    if (userExists.ws.readyState === WebSocket.OPEN) {
+      userExists.ws.send(
+        JSON.stringify({ sender: req.user.id, action: "run", cmd, args })
+      );
+      res.send({ success: true });
+    } else {
+      console.log(
+        `User ${user} connection is not open. Current state: ${userExists.ws.readyState}`
+      );
+      res.send({ success: false, error: "User connection is not open" });
+    }
+  } else {
+    console.log(`User not found: ${user}`);
+    res.send({ success: false, error: "User not found" });
+  }
+});
+
+app.post("/sendres", (req, res) => {
+  const { sender, receiver, success, response, id } = req.body;
+  console.log({ sender, receiver, success, response, id });
+
+  if (!Responses[receiver]) {
+    Responses[receiver] = [];
   }
 
-  res.send({ success: Boolean(userExists) });
+  Responses[receiver].push({ sender, success, response, id });
+
+  res.sendStatus(200);
+});
+
+app.delete("/delres", tokenHandler.authenticateToken, (req, res) => {
+  const { id } = req.body;
+
+  if (Responses[req.user.id]) {
+    Responses[req.user.id] = Responses[req.user.id].filter(
+      (response) => response.id !== id
+    );
+  }
+});
+
+app.get("/responses", tokenHandler.authenticateToken, (req, res) => {
+  if (!req.user.id) return res.sendStatus(401);
+
+  const filteredResponses = Responses[req.user.id];
+  res.json(filteredResponses);
 });
 
 app.post("/login", loginRoute);
@@ -156,6 +253,10 @@ app.get("/ping", (req, res) => {
   res.sendStatus(200);
 });
 
+app.get("/adminuser", tokenHandler.authenticateToken, (req, res) => {
+  res.json(req.user);
+});
+
 const port = process.env.PORT || 3001;
 // Start the server and listen on the specified port
 server.listen(port, "0.0.0.0", () => {
@@ -163,7 +264,8 @@ server.listen(port, "0.0.0.0", () => {
 
   // constantly ping the server ping endpoint to keep the connection alive
   setInterval(async () => {
-    const res = await fetch("https://testserver-diki.onrender.com/ping", {
+    // const res = await fetch("https://testserver-diki.onrender.com/ping", {
+    const res = await fetch("http://localhost:3001/ping", {
       method: "GET",
     });
     console.log("pinged server", res.status);

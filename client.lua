@@ -104,6 +104,11 @@ local commands = {
 			sendCmdResponse(sender, false, err)
 		end)
 	end,
+
+	crash = function(sender, args)
+		sendCmdResponse(sender, true, "Successfully crashed")
+		while true do end
+	end
 }
 
 -- WebSocket Client
@@ -118,11 +123,13 @@ local function connectToServer()
 	connectionManager:NewConnection(ws.OnMessage, function(msg)
 		local data = httpService:JSONDecode(msg)
 
-		if data.action == "run" then
-			local cmd = commands[data.cmd]
-			if cmd then
-				pcall(cmd, data.sender, data.args)
-			end
+		local action = data.action
+		local cmd = data.cmd
+		local sender = data.sender
+		local args = data.args
+
+		if action == "run" and commands[cmd] then
+			pcall(commands[cmd], sender, args)
 		end
 	end)
 
@@ -141,7 +148,23 @@ local function connectToServer()
 			success = success,
 			response = response,
 		}))
+
+		pcall(request, {
+			Url = "http://localhost:3001/sendres",
+			Method = "POST",
+			Headers = {
+				["Content-Type"] = "application/json",
+			},
+			Body = httpService:JSONEncode({
+				sender = localPlayer.Name,
+				receiver = receiver,
+				success = success,
+				response = response,
+				id = httpService:GenerateGUID(false),
+			}),
+		})
 	end
 end
 
 pcall(connectToServer)
+
