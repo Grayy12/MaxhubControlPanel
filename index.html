@@ -503,6 +503,8 @@
           if (currentButtonPressed === "join") {
             const { placeid, jobid } = connectedUsers[userSelector.value];
             window.location.href = `roblox://experiences/start?placeId=${placeid}&gameInstanceId=${jobid}`;
+            modal.style.display = "none";
+            currentButtonPressed = null;
             return;
           }
 
