@@ -63,14 +63,12 @@ wss.on("connection", (ws) => {
   }, 30000);
 
   const handleDisconnection = (connId) => {
-    if (userId) {
-      const client = ConnectedClients.get(connId);
-      if (client) {
-        console.log(
-          `User ${client.username} (${client.userid}) disconnected from server`
-        );
-        ConnectedClients.delete(connId);
-      }
+    const client = ConnectedClients.get(connId);
+    if (client) {
+      console.log(
+        `User ${client.username} (${client.userid}) disconnected from server`
+      );
+      ConnectedClients.delete(connId);
     }
   };
 
