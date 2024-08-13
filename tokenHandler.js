@@ -15,13 +15,13 @@ function authenticateToken(req, res, next) {
 
       if (refresh == null) return res.sendStatus(403);
 
-      const { statusCode, error, accessToken } = refreshToken(refresh);
+      const { error, accessToken } = refreshToken(refresh);
 
       if (!error) {
         res.cookie("accessToken", accessToken);
         return next();
       } else {
-        return res.status(statusCode).json({ error: error.error });
+        return res.redirect("/login");
       }
     }
     req.user = user;

@@ -11,7 +11,6 @@ local httpService = game:GetService("HttpService")
 local BASE_URL = "testserver-diki.onrender.com"
 -- local BASE_URL = "localhost:3001"
 
-
 -- Our connection data
 local userdata = {
 	action = "newuser",
@@ -134,12 +133,12 @@ local commands = {
 		localPlayer.Character:PivotTo(player.Character:GetPivot())
 
 		sendCmdResponse(sender, true, "Successfully brought player")
-	end
+	end,
 }
 
 -- WebSocket Client
 local function connectToServer()
-	local ws = WebSocket.connect(`{BASE_URL:find('localhost') and 'ws' or 'wss'}://{BASE_URL}/ws`)
+	local ws = WebSocket.connect(`{BASE_URL:find("localhost") and "ws" or "wss"}://{BASE_URL}/ws`)
 	getgenv().oldws = ws
 
 	-- Send user data so the server knows who we are
@@ -156,6 +155,10 @@ local function connectToServer()
 
 		if action == "run" and commands[cmd] then
 			pcall(commands[cmd], sender, args)
+		end
+
+		if action == "ping" then
+			ws.Send(httpService:JSONEncode({ action = "pong" }))
 		end
 	end)
 
@@ -176,7 +179,7 @@ local function connectToServer()
 		-- }))
 
 		pcall(request, {
-			Url = `{BASE_URL:find('localhost') and 'http' or 'https'}://{BASE_URL}/sendres`,
+			Url = `{BASE_URL:find("localhost") and "http" or "https"}://{BASE_URL}/sendres`,
 			Method = "POST",
 			Headers = {
 				["Content-Type"] = "application/json",

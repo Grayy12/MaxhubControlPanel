@@ -23,11 +23,6 @@ const wss = new WebSocket.Server({
 app.use(express.json());
 app.use(cookieParser());
 
-// Returns an array of connected user names.
-function getConnectedUsers() {
-  return Array.from(ConnectedClients.values()).map(({ username }) => username);
-}
-
 function handleResponse(message) {
   const { sender, receiver, success, response } = message;
   for (const [_, admin] of ConnectedAdmins.entries()) {
@@ -45,22 +40,14 @@ const ConnectedAdmins = new Map();
 const Responses = {};
 const { v4: uuidv4 } = require("uuid");
 
+const PING_INTERVAL = 10000;
+const PING_TIMEOUT = 5000;
+
 wss.on("connection", (ws) => {
   const connectionId = uuidv4();
-  let isAdmin = false;
-  let userId = null;
-  let username = null;
+  let pingTimeout = null;
 
   ws.connectionId = connectionId;
-
-  const pingInterval = setInterval(() => {
-    if (ws.readyState === WebSocket.OPEN) {
-      ws.ping(() => {});
-    } else if (ws.readyState === WebSocket.CLOSED) {
-      clearInterval(pingInterval);
-      handleDisconnection(connectionId);
-    }
-  }, 30000);
 
   const handleDisconnection = (connId) => {
     const client = ConnectedClients.get(connId);
@@ -72,6 +59,26 @@ wss.on("connection", (ws) => {
     }
   };
 
+  const sendPing = () => {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ action: "ping" }));
+
+      pingTimeout = setTimeout(() => {
+        console.log(`Client ${connectionId} did not respond to ping`);
+        ws.close();
+        handleDisconnection(connectionId);
+      }, PING_TIMEOUT);
+    } else if (
+      ws.readyState === WebSocket.CLOSING ||
+      ws.readyState === WebSocket.CLOSED
+    ) {
+      clearInterval(pingInterval);
+      handleDisconnection(connectionId);
+    }
+  };
+
+  const pingInterval = setInterval(sendPing, PING_INTERVAL);
+
   const handleMessage = (message) => {
     const { action } = message;
     const actions = {
@@ -80,6 +87,10 @@ wss.on("connection", (ws) => {
         addNewUser(connectionId, message);
       },
       cmdresponse: () => handleResponse(message),
+      pong: () => {
+        console.log(`Client ${connectionId} responded to ping`);
+        clearTimeout(pingTimeout);
+      },
     };
     actions[action]?.();
   };
@@ -93,6 +104,7 @@ wss.on("connection", (ws) => {
 
   ws.on("close", () => {
     clearInterval(pingInterval);
+    clearTimeout(pingTimeout);
     handleDisconnection(connectionId);
   });
 });
@@ -180,7 +192,7 @@ app.post("/sendres", (req, res) => {
 app.delete("/delres", tokenHandler.authenticateToken, (req, res) => {
   const { id } = req.body;
 
-  if (Responses[req.user.id]) {
+  if (req.user && Responses[req.user.id]) {
     Responses[req.user.id] = Responses[req.user.id].filter(
       (response) => response.id !== id
     );
@@ -188,7 +200,7 @@ app.delete("/delres", tokenHandler.authenticateToken, (req, res) => {
 });
 
 app.get("/responses", tokenHandler.authenticateToken, (req, res) => {
-  if (!req.user.id) return res.sendStatus(401);
+  if (!req.user || !req.user.id) return res.sendStatus(401);
 
   const filteredResponses = Responses[req.user.id];
   res.json(filteredResponses);
