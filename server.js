@@ -63,13 +63,7 @@ wss.on("connection", (ws) => {
   }, 30000);
 
   const handleDisconnection = (connId) => {
-    if (isAdmin) {
-      const admin = ConnectedAdmins.get(connId);
-      if (admin) {
-        console.log(`Admin ${admin.id} disconnected from server`);
-        ConnectedAdmins.delete(connId);
-      }
-    } else if (userId) {
+    if (userId) {
       const client = ConnectedClients.get(connId);
       if (client) {
         console.log(
@@ -84,31 +78,10 @@ wss.on("connection", (ws) => {
     const { action } = message;
     const actions = {
       newuser: () => {
-        const {
-          username: newUsername,
-          userid,
-          discordid,
-          placeid,
-          jobid,
-          gamename,
-        } = message;
-        userId = userid;
-        username = newUsername;
-        addNewUser(connectionId, ws, {
-          username: newUsername,
-          userid,
-          discordid,
-          placeid,
-          jobid,
-          gamename,
-        });
-      },
-      newadmin: () => {
-        isAdmin = true;
-        addNewAdmin(connectionId, ws, { token: message.token });
+        message.ws = ws;
+        addNewUser(connectionId, message);
       },
       cmdresponse: () => handleResponse(message),
-      reconnect: () => handleReconnect(connectionId, message),
     };
     actions[action]?.();
   };
@@ -126,62 +99,17 @@ wss.on("connection", (ws) => {
   });
 });
 
-function addNewUser(
-  connectionId,
-  ws,
-  { username, userid, discordid, placeid, jobid, gamename }
-) {
-  const existingUser = findUserByUsername(username);
+function addNewUser(connectionId, message) {
+  const existingUser = findUserByUsername(message.username);
   if (existingUser) {
-    console.log(`Replacing existing connection for user: ${username}`);
+    console.log(`Replacing existing connection for user: ${message.username}`);
     ConnectedClients.delete(existingUser.connectionId);
   }
-  ConnectedClients.set(connectionId, {
-    connectionId,
-    username,
-    userid,
-    ws,
-    placeid,
-    jobid,
-    discordid,
-    gamename,
-  });
+  message.connectionId = connectionId;
+  ConnectedClients.set(connectionId, message);
   console.log(
-    `New user connected: ${username} (${userid}) discordid: ${discordid} placeid: ${placeid} jobid: ${jobid} with connection ID: ${connectionId}`
+    `New user connected: ${message.username} (${message.userid}) discordid: ${message.discordid} placeid: ${message.placeid} jobid: ${message.jobid} with connection ID: ${connectionId}`
   );
-}
-
-function addNewAdmin(connectionId, ws, { token }) {
-  const user = tokenHandler.getUserFromToken(token);
-  if (user) {
-    console.log(
-      `Admin connected: ${user.id} with connection ID: ${connectionId}`
-    );
-    // Remove any existing connection for this admin
-    for (const [existingConnId, admin] of ConnectedAdmins.entries()) {
-      if (admin.id === user.id) {
-        ConnectedAdmins.delete(existingConnId);
-      }
-    }
-    ConnectedAdmins.set(connectionId, { connectionId, id: user.id, ws });
-  }
-}
-
-function handleReconnect(connectionId, message) {
-  const { username, userid, ws, placeid, jobid, discordid } = message;
-  const existingUser = findUserByUsername(username);
-  if (existingUser) {
-    console.log(
-      `User ${username} (${userid}) reconnected with new connection ID: ${connectionId}`
-    );
-    ConnectedClients.delete(existingUser.connectionId);
-    ConnectedClients.set(connectionId, { ...existingUser, connectionId, ws });
-  } else {
-    console.log(
-      `Reconnection failed for user ${username} (${userid}). Creating new connection.`
-    );
-    addNewUser(connectionId, ws, { username, userid, discordid });
-  }
 }
 
 function findUserByUsername(username) {
@@ -191,10 +119,6 @@ function findUserByUsername(username) {
     }
   }
   return null;
-}
-
-function findAdminById(id) {
-  return [...ConnectedAdmins.values()].find((admin) => admin.id === id);
 }
 
 // Handle GET request to the root URL ("/").
@@ -294,7 +218,7 @@ server.listen(port, "0.0.0.0", () => {
   // constantly ping the server ping endpoint to keep the connection alive
   setInterval(async () => {
     const res = await fetch("https://testserver-diki.onrender.com/ping", {
-    // const res = await fetch("http://localhost:3001/ping", {
+      // const res = await fetch("http://localhost:3001/ping", {
       method: "GET",
     });
     console.log("pinged server", res.status);

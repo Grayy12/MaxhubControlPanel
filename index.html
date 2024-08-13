@@ -242,6 +242,12 @@
       <h1>Maxhub Control Panel</h1>
       <div class="info-text">
         <div class="info-item">
+          <span class="info-label">Executor:</span>
+          <span id="ExecutorValue" class="info-value"
+            >Unknown</span
+          >
+        </div>
+        <div class="info-item">
           <span class="info-label">Game Name:</span>
           <span id="GameNameValue" class="info-value"
             >a literal baseplate.</span
@@ -306,6 +312,7 @@
         const gameNameValue = document.getElementById("GameNameValue");
         const jobIdValue = document.getElementById("jobIdValue");
         const placeIdValue = document.getElementById("placeIdValue");
+        const executorValue = document.getElementById("ExecutorValue");
 
         let editor;
         let user;
@@ -605,6 +612,7 @@
             placeIdValue.textContent = connectedUsers[user].placeid;
             jobIdValue.textContent = connectedUsers[user].jobid;
             gameNameValue.textContent = connectedUsers[user].gamename;
+            executorValue.textContent = connectedUsers[user].executor;
           }
         });
 

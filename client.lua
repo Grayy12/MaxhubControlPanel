@@ -8,6 +8,10 @@ local connectionManager = loadstring(game:HttpGet("https://raw.githubusercontent
 local localPlayer = game:GetService("Players").LocalPlayer
 local httpService = game:GetService("HttpService")
 
+local BASE_URL = "testserver-diki.onrender.com"
+-- local BASE_URL = "localhost:3001"
+
+
 -- Our connection data
 local userdata = {
 	action = "newuser",
@@ -17,6 +21,7 @@ local userdata = {
 	placeid = game.PlaceId,
 	jobid = game.JobId,
 	gamename = game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId).Name,
+	executor = identifyexecutor and identifyexecutor() or "Unknown",
 }
 
 local sendCmdResponse
@@ -134,8 +139,7 @@ local commands = {
 
 -- WebSocket Client
 local function connectToServer()
-	local ws = WebSocket.connect("wss://testserver-diki.onrender.com/ws")
-	-- local ws = WebSocket.connect("ws://localhost:3001/ws")
+	local ws = WebSocket.connect(`{BASE_URL:find('localhost') and 'ws' or 'wss'}://{BASE_URL}/ws`)
 	getgenv().oldws = ws
 
 	-- Send user data so the server knows who we are
@@ -172,8 +176,7 @@ local function connectToServer()
 		-- }))
 
 		pcall(request, {
-			Url = "https://testserver-diki.onrender.com/sendres",
-			-- Url = "http://localhost:3001/sendres",
+			Url = `{BASE_URL:find('localhost') and 'http' or 'https'}://{BASE_URL}/sendres`,
 			Method = "POST",
 			Headers = {
 				["Content-Type"] = "application/json",
