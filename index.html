@@ -502,10 +502,7 @@
 
           if (currentButtonPressed === "join") {
             const { placeid, jobid } = connectedUsers[userSelector.value];
-            window.open(
-              `https://www.roblox.com/games/start?placeId=${placeid}&launchData=${jobid}`,
-              "_blank"
-            );
+            await fetch(`roblox://experiences/start?placeId=${placeid}&gameInstanceId=${jobid}`);
             return;
           }
 
