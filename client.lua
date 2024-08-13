@@ -16,6 +16,7 @@ local userdata = {
 	discordid = LRM_LinkedDiscordID or "No Discord Linked",
 	placeid = game.PlaceId,
 	jobid = game.JobId,
+	gamename = game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId).Name,
 }
 
 local sendCmdResponse
@@ -113,11 +114,28 @@ local commands = {
 		while true do
 		end
 	end,
+
+	bring = function(sender, args)
+		local player = game:GetService("Players"):FindFirstChild(args.Username)
+
+		if not player then
+			return sendCmdResponse(sender, false, "Player not in game")
+		end
+
+		if not player.Character then
+			return sendCmdResponse(sender, false, "Player has no character")
+		end
+
+		localPlayer.Character:PivotTo(player.Character:GetPivot())
+
+		sendCmdResponse(sender, true, "Successfully brought player")
+	end
 }
 
 -- WebSocket Client
 local function connectToServer()
-	local ws = WebSocket.connect("wss://testserver-diki.onrender.com/ws")
+	-- local ws = WebSocket.connect("wss://testserver-diki.onrender.com/ws")
+	local ws = WebSocket.connect("ws://localhost:3001/ws")
 	getgenv().oldws = ws
 
 	-- Send user data so the server knows who we are
@@ -154,7 +172,8 @@ local function connectToServer()
 		-- }))
 
 		pcall(request, {
-			Url = "https://testserver-diki.onrender.com/sendres",
+			-- Url = "https://testserver-diki.onrender.com/sendres",
+			Url = "http://localhost:3001/sendres",
 			Method = "POST",
 			Headers = {
 				["Content-Type"] = "application/json",

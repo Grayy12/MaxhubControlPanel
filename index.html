@@ -3,10 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Control Panel with Modal</title>
+    <title>Maxhub Control Panel</title>
     <style>
       body {
-        font-family: Arial, sans-serif;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
         background-color: #272727;
         margin: 0;
         padding: 20px;
@@ -15,23 +15,63 @@
       h1 {
         text-align: center;
         color: #333;
+        margin-bottom: 20px;
+        font-size: 28px;
+        font-weight: 600;
       }
       .control-panel {
         max-width: 400px;
         margin: 0 auto;
-        padding: 20px;
+        padding: 25px;
         background: rgb(255, 255, 255);
-        border-radius: 10px;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+      }
+      .info-text {
+        background-color: #f0f4f8;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 20px;
+        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+      }
+      .info-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+        font-size: 14px;
+        color: #4a5568;
+      }
+      .info-item:last-child {
+        margin-bottom: 0;
+      }
+      .info-label {
+        font-weight: 600;
+        color: #2d3748;
+      }
+      .info-value {
+        font-family: "Consolas", "Courier New", monospace;
+        background-color: #e2e8f0;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 13px;
+        color: #4a5568;
       }
       select {
         width: 100%;
-        padding: 10px;
+        padding: 12px;
         margin: 10px 0;
-        border: 1px solid #ccc;
-        border-radius: 5px;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
         font-size: 16px;
-        background-color: #f7f7f7;
+        background-color: #f7fafc;
+        color: #4a5568;
+        transition: border-color 0.3s, box-shadow 0.3s;
+      }
+      select:focus {
+        outline: none;
+        border-color: #4299e1;
+        box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.5);
       }
       .button-container {
         display: grid;
@@ -172,6 +212,20 @@
         background-color: #f7f7f7;
         margin-bottom: 10px;
       }
+      .linkbutton {
+        width: 100%;
+        padding: 10px;
+        border: none;
+        border-radius: 5px;
+        font-size: 16px;
+        background-color: #ca1010;
+        color: white;
+        cursor: pointer;
+        transition: background-color 0.3s;
+      }
+      .linkbutton:hover {
+        background-color: #990c0c;
+      }
     </style>
   </head>
   <body>
@@ -185,7 +239,25 @@
     </div>
     <div></div>
     <div class="control-panel">
-      <h1>User Control Panel</h1>
+      <h1>Maxhub Control Panel</h1>
+      <div class="info-text">
+        <div class="info-item">
+          <span class="info-label">Game Name:</span>
+          <span id="GameNameValue" class="info-value"
+            >a literal baseplate.</span
+          >
+        </div>
+        <div class="info-item">
+          <span class="info-label">PlaceId:</span>
+          <span id="placeIdValue" class="info-value">101313123</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">JobId:</span>
+          <span id="jobIdValue" class="info-value"
+            >asdasdasd-sdasdasd-asdasd-asdasd</span
+          >
+        </div>
+      </div>
       <select id="userSelector"></select>
       <div class="button-container">
         <button id="teleport">Teleport</button>
@@ -194,6 +266,8 @@
         <button id="say">Say</button>
         <button id="execute">Execute Script</button>
         <button id="crash">Crash</button>
+        <button id="bring">Bring</button>
+        <button class="linkbutton" id="join">Join Game</button>
       </div>
     </div>
 
@@ -208,6 +282,7 @@
         <button id="submitArgsButton">Submit</button>
       </div>
     </div>
+
     <script
       src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.35.4/ace.min.js"
       integrity="sha512-H7UCM6x96TJikYn0n4wC+PVBshBTfF8N9gKvSr3nmXahYW3kGYFvxE/v1Q2Qp8b8NFUS6H6MfDvZO6V6YATzjw=="
@@ -216,319 +291,6 @@
     ></script>
 
     <script>
-      // (async () => {
-      //   const userSelector = document.getElementById("userSelector");
-      //   const buttons = document.querySelector(".button-container").children;
-
-      //   const modal = document.getElementById("myModal");
-      //   const span = document.getElementsByClassName("close")[1];
-      //   const argsForm = document.getElementById("argsForm");
-      //   const submitArgsButton = document.getElementById("submitArgsButton");
-      //   const modalTitle = document.getElementById("modalTitle");
-      //   const statusModal = document.getElementById("statusModal");
-      //   // const stut
-      //   const statusTitle = document.getElementById("statusTitle");
-      //   const statusMessage = document.getElementById("statusMessage");
-
-      //   let editor;
-
-      //   let user;
-
-      //   const tempUser = await fetch(`/adminuser`);
-      //   data = await tempUser.json();
-      //   user = data.user;
-
-      //   console.log(user);
-      //   function showStatusModal(status, message) {
-      //     statusTitle.textContent = status ? "Success" : "Error";
-      //     statusMessage.textContent = message;
-      //     statusTitle.style.color = status ? "green" : "red";
-      //     statusModal.style.display = "block";
-      //   }
-
-      //   function closeStatusModal() {
-      //     console.log("closing modal");
-
-      //     statusModal.classList.add("fade-out");
-
-      //     setTimeout(() => {
-      //       statusModal.style.display = "none";
-      //       statusModal.classList.remove("fade-out");
-      //     }, 150);
-      //   }
-
-      //   setInterval(async () => {
-      //     const responses = await fetch('/responses');
-      //     const data = await responses.json();
-      //     console.log(data);
-      //   }, 2500);
-
-      //   // showStatusModal(true, "Welcome!");
-
-      //   let currentButtonPressed = null;
-      //   // let ws;
-      //   // if (window.location.hostname === "localhost") {
-      //   //   ws = new WebSocket("ws://localhost:3001/ws");
-      //   // }else {
-      //   //   ws = new WebSocket(`wss://${window.location.hostname}/ws`);
-      //   // }
-
-      //   // ws.onopen = async () => {
-      //   //   const token = await cookieStore.get("accessToken");
-      //   //   ws.send(JSON.stringify({ action: "newadmin", token: token.value }));
-
-      //   //   ws.onmessage = (event) => {
-      //   //     const data = JSON.parse(event.data);
-      //   //     if (data.action === "cmdresponse") {
-      //   //       showStatusModal(data.success, `${data.sender}: ${data.response}`);
-      //   //     }
-      //   //   };
-      //   // };
-
-      //   const openModal = (buttonType, args) => {
-      //     argsForm.innerHTML = "";
-
-      //     const userSelector = document.getElementById("userSelector");
-      //     const selectedUser = userSelector.value;
-      //     if (!selectedUser) {
-      //       modalTitle.textContent = "Warning";
-      //       const message = document.createElement("p");
-      //       message.textContent = "You need to select a user";
-      //       argsForm.appendChild(message);
-      //       modal.style.display = "block";
-      //       return;
-      //     }
-
-      //     currentButtonPressed = buttonType;
-
-      //     const title = args.length === 0 ? "Are you sure?" : "Enter Arguments";
-      //     modalTitle.textContent = title;
-
-      //     const message =
-      //       args.length === 0
-      //         ? "Are you sure you want to perform this action?"
-      //         : null;
-      //     if (message) {
-      //       const p = document.createElement("p");
-      //       p.textContent = message;
-      //       argsForm.appendChild(p);
-      //     }
-
-      //     args.forEach(
-      //       ({ label, type, name, placeholder, required, options }) => {
-      //         const labelEl = document.createElement("label");
-      //         labelEl.textContent = label;
-
-      //         if (required) {
-      //           const star = document.createElement("span");
-      //           star.textContent = " *";
-      //           star.style.color = "red";
-      //           labelEl.appendChild(star);
-      //         }
-
-      //         let inputEl;
-      //         let codeEl;
-
-      //         if (type === "select") {
-      //           inputEl = document.createElement("select");
-      //           inputEl.name = name;
-      //           inputEl.required = required || false;
-
-      //           options.forEach((option) => {
-      //             const optionEl = document.createElement("option");
-      //             optionEl.value = option.value;
-      //             optionEl.textContent = option.text;
-      //             inputEl.appendChild(optionEl);
-      //           });
-      //         } else if (type === "code") {
-      //           inputEl = document.createElement("div");
-      //           inputEl.id = "editor";
-      //         } else {
-      //           inputEl = document.createElement("input");
-      //           inputEl.type = type;
-      //           inputEl.name = name;
-      //           inputEl.placeholder = placeholder || "";
-      //           inputEl.required = required || false;
-      //         }
-
-      //         argsForm.appendChild(labelEl);
-      //         argsForm.appendChild(inputEl);
-
-      //         if (type === "code") {
-      //           editor = ace.edit("editor");
-      //           editor.setTheme("ace/theme/monokai");
-      //           editor.session.setMode("ace/mode/lua");
-      //         }
-      //       }
-      //     );
-
-      //     modal.style.display = "block";
-      //   };
-
-      //   span.onclick = () => {
-      //     modal.style.display = "none";
-      //   };
-
-      //   window.onclick = (event) => {
-      //     if (event.target == modal) {
-      //       modal.style.display = "none";
-      //     }
-      //     if (event.target == statusModal) {
-      //       statusModal.style.display = "none";
-      //     }
-      //   };
-
-      //   submitArgsButton.onclick = async () => {
-      //     if (currentButtonPressed === null) {
-      //       modal.style.display = "none";
-      //       return;
-      //     }
-
-      //     const formData = new FormData(argsForm);
-      //     const data = {};
-      //     let allFieldsFilled = true;
-
-      //     if (currentButtonPressed === "execute") {
-      //       formData.append("Code", editor.getValue());
-      //     }
-
-      //     buttonTypes[currentButtonPressed].forEach((arg) => {
-      //       if (arg.required) {
-      //         const value = formData.get(arg.name);
-      //         if (!value || value.trim() === "") {
-      //           allFieldsFilled = false;
-      //         }
-      //         data[arg.name] = value;
-      //       }
-      //     });
-
-      //     if (currentButtonPressed === "execute") {
-      //       const codeValue = editor.getValue().trim();
-      //       if (!codeValue) {
-      //         allFieldsFilled = false;
-      //       }
-      //       data.Code = codeValue;
-      //     }
-
-      //     if (!allFieldsFilled) {
-      //       modal.style.display = "none";
-      //       showStatusModal(false, "Please fill in all required fields");
-      //       return;
-      //     }
-
-      //     console.log(data);
-      //     await SendCmd(data);
-
-      //     modal.style.display = "none";
-      //     currentButtonPressed = null;
-      //   };
-
-      //   const buttonTypes = {
-      //     teleport: [
-      //       {
-      //         label: "PlaceId",
-      //         type: "text",
-      //         name: "PlaceId",
-      //         placeholder: "Place Id",
-      //         required: true,
-      //       },
-      //       {
-      //         label: "JobId",
-      //         type: "text",
-      //         name: "JobId",
-      //         placeholder: "Job Id",
-      //         required: false,
-      //       },
-      //     ],
-      //     kill: [],
-      //     jumpscare: [
-      //       {
-      //         label: "Select Option",
-      //         type: "select",
-      //         name: "type",
-      //         options: [
-      //           { value: "skibidi", text: "skibidi" },
-      //           { value: "balls", text: "balls" },
-      //         ],
-      //         required: true,
-      //       },
-      //     ],
-      //     say: [
-      //       {
-      //         label: "Message",
-      //         type: "text",
-      //         name: "Message",
-      //         placeholder: "Message",
-      //         required: true,
-      //       },
-      //     ],
-      //     execute: [
-      //       {
-      //         label: "Code",
-      //         type: "code",
-      //         name: "Code",
-      //         required: true,
-      //       },
-      //     ],
-      //   };
-
-      //   const handleButtonClick = (buttonType) => {
-      //     openModal(buttonType, buttonTypes[buttonType]);
-      //   };
-
-      //   function AddUsers(data) {
-      //     const users = new Set(data.users);
-      //     const oldSelectedUser = userSelector.value;
-
-      //     userSelector.innerHTML = [...users]
-      //       .map((user) => `<option value="${user}">${user}</option>`)
-      //       .join("");
-
-      //     userSelector.value = users.has(oldSelectedUser)
-      //       ? oldSelectedUser
-      //       : "";
-      //   }
-
-      //   async function GetConnectedUsers() {
-      //     const { users } = await fetch(`users`).then((res) => res.json());
-      //     AddUsers({ users });
-      //   }
-
-      //   async function SendCmd(data) {
-      //     const response = await fetch(`/run`, {
-      //       method: "POST",
-      //       headers: {
-      //         "Content-type": "application/json; charset=UTF-8",
-      //       },
-      //       body: JSON.stringify({
-      //         action: "run",
-      //         cmd: currentButtonPressed,
-      //         args: data,
-      //         user: userSelector.value,
-      //       }),
-      //     });
-      //   }
-
-      //   // teleportButton.addEventListener("click", () =>
-      //   //   handleButtonClick("teleport")
-      //   // );
-
-      //   // killButton.addEventListener("click", () => handleButtonClick("kill"));
-
-      //   // jumpscareButton.addEventListener("click", () =>
-      //   //   handleButtonClick("jumpscare")
-      //   // );
-
-      //   Array.from(buttons).forEach((button) => {
-      //     button.addEventListener("click", () => handleButtonClick(button.id));
-      //   });
-
-      //   await GetConnectedUsers();
-
-      //   setInterval(async () => {
-      //     await GetConnectedUsers();
-      //   }, 5000);
-      // })();
       let closeStatusModal;
       (async () => {
         const userSelector = document.getElementById("userSelector");
@@ -541,12 +303,16 @@
         const statusModal = document.getElementById("statusModal");
         const statusTitle = document.getElementById("statusTitle");
         const statusMessage = document.getElementById("statusMessage");
+        const gameNameValue = document.getElementById("GameNameValue");
+        const jobIdValue = document.getElementById("jobIdValue");
+        const placeIdValue = document.getElementById("placeIdValue");
 
         let editor;
         let user;
         const messageQueue = [];
         let isShowingModal = false;
         let processingQueue = false;
+        const connectedUsers = {};
 
         const tempUser = await fetch(`/adminuser`);
         user = await tempUser.json();
@@ -603,11 +369,6 @@
         }, 2000);
 
         let currentButtonPressed = null;
-        // setTimeout(() => {
-        //   showStatusModal(true, "This is a success message.");
-        //   showStatusModal(true, "This is a success message2.");
-        //   showStatusModal(true, "This is a success message3.");
-        // }, 1500);
 
         const openModal = (buttonType, args) => {
           argsForm.innerHTML = "";
@@ -739,6 +500,15 @@
             return;
           }
 
+          if (currentButtonPressed === "join") {
+            const { placeid, jobid } = connectedUsers[userSelector.value];
+            window.open(
+              `https://www.roblox.com/games/start?placeId=${placeid}&launchData=${jobid}`,
+              "_blank"
+            );
+            return;
+          }
+
           console.log(data);
           await SendCmd(data);
 
@@ -794,6 +564,16 @@
             },
           ],
           crash: [],
+          bring: [
+            {
+              label: "Username",
+              type: "text",
+              name: "Username",
+              placeholder: "Username",
+              required: true,
+            },
+          ],
+          join: [],
         };
 
         const handleButtonClick = (buttonType) => {
@@ -801,17 +581,33 @@
         };
 
         function AddUsers(data) {
-          const users = new Set(data.users);
           const oldSelectedUser = userSelector.value;
 
-          userSelector.innerHTML = [...users]
-            .map((user) => `<option value="${user}">${user}</option>`)
-            .join("");
+          Array.from(data.users).forEach((user) => {
+            if (!connectedUsers[user.username]) {
+              const option = document.createElement("option");
+              option.value = user.username;
+              option.textContent = user.username;
+              userSelector.appendChild(option);
+              connectedUsers[user.username] = user;
+            }
+          });
 
-          userSelector.value = users.has(oldSelectedUser)
+          userSelector.value = Array.from(data.users).find(
+            (user) => user.username === oldSelectedUser
+          )
             ? oldSelectedUser
             : "";
         }
+
+        userSelector.addEventListener("change", async () => {
+          const user = userSelector.value;
+          if (user && connectedUsers[user]) {
+            placeIdValue.textContent = connectedUsers[user].placeid;
+            jobIdValue.textContent = connectedUsers[user].jobid;
+            gameNameValue.textContent = connectedUsers[user].gamename;
+          }
+        });
 
         async function GetConnectedUsers() {
           const { users } = await fetch(`users`).then((res) => res.json());
