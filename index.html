@@ -502,7 +502,7 @@
 
           if (currentButtonPressed === "join") {
             const { placeid, jobid } = connectedUsers[userSelector.value];
-            await fetch(`roblox://experiences/start?placeId=${placeid}&gameInstanceId=${jobid}`);
+            window.location.href = `roblox://experiences/start?placeId=${placeid}&gameInstanceId=${jobid}`;
             return;
           }
 
