@@ -134,8 +134,8 @@ local commands = {
 
 -- WebSocket Client
 local function connectToServer()
-	-- local ws = WebSocket.connect("wss://testserver-diki.onrender.com/ws")
-	local ws = WebSocket.connect("ws://localhost:3001/ws")
+	local ws = WebSocket.connect("wss://testserver-diki.onrender.com/ws")
+	-- local ws = WebSocket.connect("ws://localhost:3001/ws")
 	getgenv().oldws = ws
 
 	-- Send user data so the server knows who we are
@@ -172,8 +172,8 @@ local function connectToServer()
 		-- }))
 
 		pcall(request, {
-			-- Url = "https://testserver-diki.onrender.com/sendres",
-			Url = "http://localhost:3001/sendres",
+			Url = "https://testserver-diki.onrender.com/sendres",
+			-- Url = "http://localhost:3001/sendres",
 			Method = "POST",
 			Headers = {
 				["Content-Type"] = "application/json",
