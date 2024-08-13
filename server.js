@@ -41,7 +41,7 @@ const Responses = {};
 const { v4: uuidv4 } = require("uuid");
 
 const PING_INTERVAL = 10000;
-const PING_TIMEOUT = 5000;
+const PING_TIMEOUT = 10000;
 
 wss.on("connection", (ws) => {
   const connectionId = uuidv4();
