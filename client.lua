@@ -158,7 +158,7 @@ local function connectToServer()
 		end
 
 		if action == "ping" then
-			ws.Send(httpService:JSONEncode({ action = "pong" }))
+			ws:Send(httpService:JSONEncode({ action = "pong" }))
 		end
 	end)
 
