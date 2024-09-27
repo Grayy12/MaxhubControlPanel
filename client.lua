@@ -36,29 +36,33 @@ local commands = {
 
 		if humanoid and humanoid.Health > 0 then
 			humanoid:TakeDamage(humanoid.MaxHealth)
-			return sendCmdResponse(sender, true, "Killed")
+			sendCmdResponse(sender, true, "Killed")
+			return
 		end
-
-		return sendCmdResponse(sender, false, "Failed to kill")
+		sendCmdResponse(sender, false, "Failed to kill")
+		return
 	end,
 
 	say = function(sender, args)
 		if game:GetService("TextChatService").ChatVersion == Enum.ChatVersion.TextChatService then
 			local channel: TextChannel = game:GetService("TextChatService").TextChannels.RBXGeneral
 			channel:SendAsync(args.Message)
-			return sendCmdResponse(sender, true, "Successfully sent message")
+			sendCmdResponse(sender, true, "Successfully sent message")
+			return
 		else
 			game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents.SayMessageRequest:FireServer(args.Message, "All")
-			return sendCmdResponse(sender, true, "Successfully sent message")
+			sendCmdResponse(sender, true, "Successfully sent message")
+			return
 		end
-
-		return sendCmdResponse(sender, false, "Failed to send message")
+		sendCmdResponse(sender, false, "Failed to send message")
+		return
 	end,
 
 	jumpscare = function(sender, args)
 		coroutine.wrap(function()
 			if not writefile or not getcustomasset or not request then
-				return sendCmdResponse(sender, false, "Executor not supported")
+				sendCmdResponse(sender, false, "Executor not supported")
+				return
 			end
 			sendCmdResponse(sender, true, "Successfully executed jumpscare")
 
