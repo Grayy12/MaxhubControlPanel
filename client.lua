@@ -137,7 +137,7 @@ function GlobalChat:addMessage(msg: string, type: "Roblox" | "Discord" | "Dev", 
 	return message
 end
 
-function GlobalChat:SendMessage(msg: string, type: "Roblox" | "Discord" | "Dev")
+function GlobalChat:SendMessage(msg: string, msg_type: "Roblox" | "Discord" | "Dev")
 	if not ws or self.SendMessageDebounce then
 		return
 	end
@@ -147,10 +147,11 @@ function GlobalChat:SendMessage(msg: string, type: "Roblox" | "Discord" | "Dev")
 	ws:Send(httpService:JSONEncode({
 		action = "send_msg",
 		chat_msg = msg,
-		chat_type = type,
+		msg_type = msg_type,
+		sender = localPlayer.Name,
 	}))
 
-	local message = self:addMessage(msg, type, localPlayer.Name)
+	local message = self:addMessage(msg, msg_type, localPlayer.Name)
 
 	task.delay(3, function()
 		if not self.LastMessageSent then
@@ -322,7 +323,7 @@ local function connectToServer()
 	-- Send user data so the server knows who we are
 	ws:Send(httpService:JSONEncode(userdata))
 
-	ws:Send(httpService:JSONEncode({ action = "send_msg", chat_msg = "Successfully connected to server" }))
+	-- ws:Send(httpService:JSONEncode({ action = "send_msg", chat_msg = "Successfully connected to server" }))
 
 	-- Listen for messages
 	connectionManager:NewConnection(ws.OnMessage, function(msg)
@@ -342,6 +343,7 @@ local function connectToServer()
 		end
 
 		if action == "msg_received" then
+			print(data.message, data.msgType, data.sender)
 			GlobalChatInstance:addMessage(data.message, data.msgType, data.sender)
 		end
 

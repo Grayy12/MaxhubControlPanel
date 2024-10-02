@@ -160,7 +160,7 @@ function broadcastMessage(connectionId, message, msgType, sender) {
   }
 
   // Debug logs
-  console.log(`${connectionId} sent message: ${message}`);
+  console.log(`${connectionId} sent message: ${message}, msgType: ${msgType}, sender: ${sender}`);
 
   // Send message to all clients except the sender
   for (const [_, client] of ConnectedClients.entries()) {
