@@ -37,6 +37,9 @@ function handleResponse(message) {
 
 const ConnectedClients = new Map();
 const ConnectedAdmins = new Map();
+
+const StoredMessages = new Map();
+
 const Responses = {};
 const { v4: uuidv4 } = require("uuid");
 
@@ -91,6 +94,22 @@ wss.on("connection", (ws) => {
         console.log(`Client ${connectionId} responded to ping`);
         clearTimeout(pingTimeout);
       },
+      send_msg: () => {
+        broadcastMessage(
+          connectionId,
+          message.chat_msg,
+          message.msg_type,
+          message.sender
+        );
+      },
+      get_msgs: () => {
+        ws.send(
+          JSON.stringify({
+            action: "get_msgs",
+            messages: getAllStoredMessages(),
+          })
+        );
+      },
     };
     actions[action]?.();
   };
@@ -122,6 +141,58 @@ function addNewUser(connectionId, message) {
   );
 }
 
+// HANDLE GLOBAL CHAT
+function broadcastMessage(connectionId, message, msgType, sender) {
+  // store the message
+  if (!StoredMessages.has(connectionId)) {
+    StoredMessages.set(connectionId, {
+      messages: [{ message, timestamp: new Date(), msgType }],
+    });
+  } else {
+    const storedMessages = StoredMessages.get(connectionId);
+    storedMessages.messages.push({
+      message,
+      timestamp: new Date(),
+      msgType,
+      sender,
+    });
+    StoredMessages.set(connectionId, storedMessages);
+  }
+
+  // Debug logs
+  console.log(`${connectionId} sent message: ${message}`);
+
+  // Send message to all clients except the sender
+  for (const [_, client] of ConnectedClients.entries()) {
+    if (client.connectionId !== connectionId) {
+      client.ws.send(
+        JSON.stringify({ message, msgType, sender, action: "msg_received" })
+      );
+    } else {
+      client.ws.send(JSON.stringify({ action: "msg_sent" }));
+    }
+  }
+}
+
+function getAllStoredMessages() {
+  const messages = [];
+  for (const [_, storedMessages] of StoredMessages.entries()) {
+    messages.push(...storedMessages.messages);
+  }
+  return messages;
+}
+
+// Delete message older than a day
+setInterval(() => {
+  const now = new Date();
+  const twentyFourHoursAgo = new Date(now.getTime() - 86400000);
+  for (const [_, storedMessages] of StoredMessages.entries()) {
+    storedMessages.messages = storedMessages.messages.filter((message) => {
+      return new Date(message.timestamp) > twentyFourHoursAgo;
+    });
+  }
+}, 86400000);
+
 function findUserByUsername(username) {
   for (const user of ConnectedClients.values()) {
     if (user.username === username) {
@@ -151,18 +222,54 @@ app.get("/users", tokenHandler.authenticateToken, (req, res) => {
   res.send({ users: users });
 });
 
+app.get("/messages", (req, res) => {
+  const messages = getAllStoredMessages();
+  res.send({ messages: messages });
+});
+
+// app.post("/run", tokenHandler.authenticateToken, (req, res) => {
+//   const { user, cmd, args } = req.body;
+//   const userExists = findUserByUsername(user);
+
+//   if (userExists) {
+//     console.log(
+//       `Sending command to user: ${user}, Command: ${cmd}, Args: ${args}, Connection ID: ${userExists.connectionId}`
+//     );
+//     if (userExists.ws.readyState === WebSocket.OPEN) {
+//       userExists.ws.send(
+//         JSON.stringify({ sender: req.user.id, action: "run", cmd, args })
+//       );
+//       res.send({ success: true });
+//     } else {
+//       console.log(
+//         `User ${user} connection is not open. Current state: ${userExists.ws.readyState}`
+//       );
+//       res.send({ success: false, error: "User connection is not open" });
+//     }
+//   } else {
+//     console.log(`User not found: ${user}`);
+//     res.send({ success: false, error: "User not found" });
+//   }
+// });
+
 app.post("/run", tokenHandler.authenticateToken, (req, res) => {
   const { user, cmd, args } = req.body;
+  console.log(
+    `Received command request: User: ${user}, Command: ${cmd}, Args:`,
+    args
+  );
+
   const userExists = findUserByUsername(user);
 
   if (userExists) {
     console.log(
-      `Sending command to user: ${user}, Command: ${cmd}, Args: ${args}, Connection ID: ${userExists.connectionId}`
+      `User found: ${user}, Connection ID: ${userExists.connectionId}`
     );
     if (userExists.ws.readyState === WebSocket.OPEN) {
       userExists.ws.send(
         JSON.stringify({ sender: req.user.id, action: "run", cmd, args })
       );
+      console.log(`Command sent to user: ${user}, Command: ${cmd}`);
       res.send({ success: true });
     } else {
       console.log(

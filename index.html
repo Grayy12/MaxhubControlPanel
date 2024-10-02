@@ -243,9 +243,7 @@
       <div class="info-text">
         <div class="info-item">
           <span class="info-label">Executor:</span>
-          <span id="ExecutorValue" class="info-value"
-            >Unknown</span
-          >
+          <span id="ExecutorValue" class="info-value">Unknown</span>
         </div>
         <div class="info-item">
           <span class="info-label">Game Name:</span>
@@ -582,8 +580,17 @@
           join: [],
         };
 
-        const handleButtonClick = (buttonType) => {
-          openModal(buttonType, buttonTypes[buttonType]);
+        let isProcessing = false;
+
+        const handleButtonClick = async (buttonType) => {
+          if (isProcessing) return;
+          isProcessing = true;
+
+          try {
+            await openModal(buttonType, buttonTypes[buttonType]);
+          } finally {
+            isProcessing = false;
+          }
         };
 
         function AddUsers(data) {
