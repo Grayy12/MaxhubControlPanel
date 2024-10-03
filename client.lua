@@ -52,7 +52,7 @@ function GlobalChat.init()
 
 	self.Drag = self.ScreenGui["Main/Drag"]
 	self.Main = self.Drag.Main
-	self.Main.Visible = false
+	self.Drag.Visible = false
 	self.MessageHolder = self.Main.ScrollingFrame
 	self.MessageBox = self.Main.Messagebox
 
@@ -93,9 +93,10 @@ function GlobalChat.init()
 		end
 	end)
 
-	connectionManager:NewConnection(game:GetService("UserInputService").InputBegan, function(gameProcessed, input)
+	connectionManager:NewConnection(game:GetService("UserInputService").InputBegan, function(input, gameProcessed )
+		if gameProcessed then return end
 		if input.KeyCode == Enum.KeyCode.BackSlash then
-			self.Main.Visible = not self.Main.Visible
+			self.Drag.Visible = not self.Drag.Visible
 		end
 	end)
 
