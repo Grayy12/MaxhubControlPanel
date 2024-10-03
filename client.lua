@@ -41,9 +41,9 @@ end
 local GlobalChat = {}
 
 function GlobalChat.init()
-	if not isDev then
-		return
-	end -- DEV TESTING
+	-- if not isDev then
+	-- 	return
+	-- end -- DEV TESTING
 	local self = {}
 
 	self.ScreenGui = game:GetObjects("rbxassetid://110126484672625")[1]
@@ -52,6 +52,7 @@ function GlobalChat.init()
 
 	self.Drag = self.ScreenGui["Main/Drag"]
 	self.Main = self.Drag.Main
+	self.Main.Visible = false
 	self.MessageHolder = self.Main.ScrollingFrame
 	self.MessageBox = self.Main.Messagebox
 
@@ -89,6 +90,12 @@ function GlobalChat.init()
 	connectionManager:NewConnection(game:GetService("UserInputService").InputChanged, function(input)
 		if input == DragInput and Dragging then
 			Update(input)
+		end
+	end)
+
+	connectionManager:NewConnection(game:GetService("UserInputService").InputBegan, function(gameProcessed, input)
+		if input.KeyCode == Enum.KeyCode.BackSlash then
+			self.Main.Visible = not self.Main.Visible
 		end
 	end)
 
