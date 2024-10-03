@@ -94,8 +94,7 @@ function GlobalChat.init()
 	end)
 
 	connectionManager:NewConnection(game:GetService("UserInputService").InputBegan, function(input, gameProcessed )
-		if gameProcessed then return end
-		if input.KeyCode == Enum.KeyCode.BackSlash then
+		if not gameProcessed and input.KeyCode == Enum.KeyCode.U then
 			self.Drag.Visible = not self.Drag.Visible
 		end
 	end)

@@ -146,10 +146,13 @@ function addNewUser(connectionId, message) {
 // HANDLE GLOBAL CHAT
 function broadcastMessage(connectionId, message, msgType, sender) {
   // filter words
-  for (const word of badwords) {
-    message = message.replaceAll(word, "****");
+  if (Array.isArray(badwords)) {
+    for (const word of badwords) {
+      message = message.replaceAll(word, "****");
+    }
+  } else {
+    console.error("Bad words is not an array");
   }
-
   // filter urls
   const urlRegex = /\b(?:www\.|https?:\/\/)?[a-z0-9.-]+(?:\.[a-z]{2,})\b/i;
   message = message.replace(urlRegex, "****");
