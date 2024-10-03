@@ -8,6 +8,7 @@ const tokenHandler = require("./tokenHandler.js");
 const loginRoute = require("./routes/login.js");
 const logoutRoute = require("./routes/logout.js");
 const tokenRoute = require("./routes/token.js");
+const badwords = require("./badnonos.js");
 
 // Set up express and WebSocket server.
 const app = express();
@@ -144,6 +145,15 @@ function addNewUser(connectionId, message) {
 
 // HANDLE GLOBAL CHAT
 function broadcastMessage(connectionId, message, msgType, sender) {
+  // filter words
+  for (const word of badwords) {
+    message = message.replaceAll(word, "****");
+  }
+
+  // filter urls
+  const urlRegex = /\b(?:www\.|https?:\/\/)?[a-z0-9.-]+(?:\.[a-z]{2,})\b/i;
+  message = message.replace(urlRegex, "****");
+
   // store the message
   if (!StoredMessages.has(connectionId)) {
     StoredMessages.set(connectionId, {
@@ -161,7 +171,9 @@ function broadcastMessage(connectionId, message, msgType, sender) {
   }
 
   // Debug logs
-  console.log(`${connectionId} sent message: ${message}, msgType: ${msgType}, sender: ${sender}`);
+  console.log(
+    `${connectionId} sent message: ${message}, msgType: ${msgType}, sender: ${sender}`
+  );
 
   // Send message to all clients except the sender
   for (const [_, client] of ConnectedClients.entries()) {

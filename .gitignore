@@ -4,3 +4,4 @@ Contol Panel to control Maxhub Users
 .env
 apikey.txt
 test.lua
+node_modules/
