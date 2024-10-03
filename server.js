@@ -8,7 +8,7 @@ const tokenHandler = require("./tokenHandler.js");
 const loginRoute = require("./routes/login.js");
 const logoutRoute = require("./routes/logout.js");
 const tokenRoute = require("./routes/token.js");
-const badwords = require("./badnonos.js");
+
 
 // Set up express and WebSocket server.
 const app = express();
@@ -19,6 +19,49 @@ const wss = new WebSocket.Server({
   clientTracking: true,
   path: "/ws",
 });
+
+
+
+var badwords = [
+  "f4nny",
+  "fag",
+  "fagbag",
+  "fagg",
+  "fagging",
+  "faggit",
+  "faggitt",
+  "faggot",
+  "faggs",
+  "fagot",
+  "fagots",
+  "fags",
+  "fagtard",
+  "fanny",
+  "fannyflaps",
+  "fannyfucker",
+  "fanyy",
+  "n1gga",
+  "n1gger",
+  "nambla",
+  "nawashi",
+  "nazi",
+  "negro",
+  "neonazi",
+  "nig nog",
+  "nigg3r",
+  "nigg4h",
+  "nigga",
+  "niggah",
+  "niggas",
+  "niggaz",
+  "nigger",
+  "niggers",
+  "niglet"
+];
+
+
+
+
 
 // Set up middleware.
 app.use(express.json());
