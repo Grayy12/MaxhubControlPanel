@@ -94,6 +94,7 @@ wss.on("connection", (ws) => {
         console.log(`Client ${connectionId} responded to ping`);
         clearTimeout(pingTimeout);
       },
+
       send_msg: () => {
         broadcastMessage(
           connectionId,

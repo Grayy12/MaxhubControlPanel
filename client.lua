@@ -9,7 +9,8 @@ end
 getgenv().forceClosing = false
 -- Services / Variables
 local connectionManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/Grayy12/EXT/main/connections.lua", true))().new("MaxhubServerStuff")
-local localPlayer = game:GetService("Players").LocalPlayer
+local localPlayer = game:GetService("Players").LocalPlayer or game:GetService("Players"):GetPropertyChangedSignal("LocalPlayer"):Wait() and game:GetService("Players").LocalPlayer
+local mouse = localPlayer:GetMouse()
 local httpService = game:GetService("HttpService")
 
 local BASE_URL = "testserver-diki.onrender.com"
@@ -33,21 +34,63 @@ local userdata = {
 local devs = loadstring(game:HttpGet("https://raw.githubusercontent.com/Grayy12/MaxhubControlPanel/refs/heads/main/MAXHUBSUPERDEVSIGMAS"))() or { 332721249, 213207428, 7012855056, 7098987458, 2283397273 }
 local isDev = table.find(devs, localPlayer.UserId)
 
+local function UpdateCanvasSize(Canvas, Constraint)
+	Canvas.CanvasSize = UDim2.new(0, Constraint.AbsoluteContentSize.X, 0, Constraint.AbsoluteContentSize.Y+20)
+end
+
 local GlobalChat = {}
-GlobalChat.__index = GlobalChat
 
 function GlobalChat.init()
-	if not isDev then return end -- DEV TESTING
-	local self = setmetatable({}, GlobalChat)
+	if not isDev then
+		return
+	end -- DEV TESTING
+	local self = {}
 
 	self.ScreenGui = game:GetObjects("rbxassetid://110126484672625")[1]
 
-	self.ScreenGui.Parent = gethui and gethui() or game:GetService("CoreGui")
+	self.ScreenGui.Parent = localPlayer.PlayerGui
 
 	self.Drag = self.ScreenGui["Main/Drag"]
 	self.Main = self.Drag.Main
 	self.MessageHolder = self.Main.ScrollingFrame
 	self.MessageBox = self.Main.Messagebox
+
+	local Dragging = nil
+	local DragInput = nil
+	local DragStart = nil
+	local StartPosition = nil
+
+	local function Update(input)
+		local Delta = input.Position - DragStart
+		local pos = UDim2.new(StartPosition.X.Scale, StartPosition.X.Offset + Delta.X, StartPosition.Y.Scale, StartPosition.Y.Offset + Delta.Y)
+		self.Drag.Position = pos
+	end
+
+	connectionManager:NewConnection(self.Drag.InputBegan, function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			Dragging = true
+			DragStart = input.Position
+			StartPosition = self.Drag.Position
+
+			connectionManager:NewConnection(input.Changed, function()
+				if input.UserInputState == Enum.UserInputState.End then
+					Dragging = false
+				end
+			end)
+		end
+	end)
+
+	connectionManager:NewConnection(self.Drag.InputChanged, function(input)
+		if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+			DragInput = input
+		end
+	end)
+
+	connectionManager:NewConnection(game:GetService("UserInputService").InputChanged, function(input)
+		if input == DragInput and Dragging then
+			Update(input)
+		end
+	end)
 
 	connectionManager:NewConnection(self.MessageBox.FocusLost, function(enterPressed, inputObject)
 		warn("Sending message...")
@@ -74,21 +117,13 @@ function GlobalChat.init()
 
 	self.RobloxChatTemplate = self.MessageHolder.Roblox
 
-	local temp = self.RobloxChatTemplate:Clone()
-	self.RobloxChatTemplate:Destroy()
-	self.RobloxChatTemplate = temp
+	self.RobloxChatTemplate = self.MessageHolder.Roblox:Clone()
+	self.DiscordChatTemplate = self.MessageHolder.Discord:Clone()
+	self.DevChatTemplate = self.MessageHolder.Dev:Clone()
 
-	self.DiscordChatTemplate = self.MessageHolder.Discord
-
-	temp = self.DiscordChatTemplate:Clone()
-	self.DiscordChatTemplate:Destroy()
-	self.DiscordChatTemplate = temp
-
-	self.DevChatTemplate = self.MessageHolder.Dev
-
-	temp = self.DevChatTemplate:Clone()
-	self.DevChatTemplate:Destroy()
-	self.DevChatTemplate = temp
+	self.MessageHolder.Roblox:Destroy()
+	self.MessageHolder.Discord:Destroy()
+	self.MessageHolder.Dev:Destroy()
 
 	self.msgTypes = {
 		Roblox = self.RobloxChatTemplate,
@@ -101,66 +136,66 @@ function GlobalChat.init()
 
 	self.SendMessageDebounce = false
 
-	return self
-end
+	function self:fetchMessages()
+		local response = request({
+			Url = `{BASE_URL:find("localhost") and "http" or "https"}://{BASE_URL}/messages`,
+			Method = "GET",
+		})
 
-function GlobalChat:fetchMessages()
-	local response = request({
-		Url = `{BASE_URL:find("localhost") and "http" or "https"}://{BASE_URL}/messages`,
-		Method = "GET",
-	})
-
-	if response.StatusCode == 200 then
-		local data = httpService:JSONDecode(response.Body)
-		return data.messages
-	end
-
-	return "Failed to fetch messages"
-end
-
-function GlobalChat:addMessage(msg: string, type: "Roblox" | "Discord" | "Dev", sender: string)
-	assert(self.msgTypes[type], "Invalid message type")
-
-	local message = self.msgTypes[type]:Clone()
-
-	msg = msg:sub(1, 64)
-
-	if type == "Roblox" then
-		message.Text = `{sender}: {msg}`
-	else
-		message.Text = `{type} [{sender}]: {msg}`
-	end
-
-	message.Visible = true
-	message.Parent = self.MessageHolder
-
-	return message
-end
-
-function GlobalChat:SendMessage(msg: string, msg_type: "Roblox" | "Discord" | "Dev")
-	if not ws or self.SendMessageDebounce then
-		return
-	end
-
-	self.SendMessageDebounce = true
-
-	ws:Send(httpService:JSONEncode({
-		action = "send_msg",
-		chat_msg = msg,
-		msg_type = msg_type,
-		sender = localPlayer.Name,
-	}))
-
-	local message = self:addMessage(msg, msg_type, localPlayer.Name)
-
-	task.delay(3, function()
-		if not self.LastMessageSent then
-			message:Destroy()
-		else
-			self.LastMessageSent = false
+		if response.StatusCode == 200 then
+			local data = httpService:JSONDecode(response.Body)
+			return data.messages
 		end
-		self.SendMessageDebounce = false
-	end)
+
+		return "Failed to fetch messages"
+	end
+
+	function self:addMessage(msg: string, type: "Roblox" | "Discord" | "Dev", sender: string)
+		assert(self.msgTypes[type], "Invalid message type")
+
+		local message = self.msgTypes[type]:Clone()
+
+		msg = msg:sub(1, 64)
+
+		if type == "Roblox" then
+			message.Text = `{sender}: {msg}`
+		else
+			message.Text = `{type} [{sender}]: {msg}`
+		end
+		table.foreach(self, print)
+		message.Parent = self.MessageHolder
+		UpdateCanvasSize(self.MessageHolder, self.MessageHolder.UIListLayout)
+
+		return message
+	end
+
+	function self:SendMessage(msg: string, msg_type: "Roblox" | "Discord" | "Dev")
+		if not ws or self.SendMessageDebounce then
+			return
+		end
+
+		self.SendMessageDebounce = true
+
+		ws:Send(httpService:JSONEncode({
+			action = "send_msg",
+			chat_msg = msg,
+			msg_type = msg_type,
+			sender = localPlayer.Name,
+		}))
+
+		local message = self:addMessage(msg, msg_type, localPlayer.Name)
+
+		task.delay(3, function()
+			if not self.LastMessageSent then
+				message:Destroy()
+			else
+				self.LastMessageSent = false
+			end
+			self.SendMessageDebounce = false
+		end)
+	end
+
+	return self
 end
 
 -- END GLOBAL CHAT
@@ -324,6 +359,15 @@ local function connectToServer()
 	ws:Send(httpService:JSONEncode(userdata))
 
 	-- ws:Send(httpService:JSONEncode({ action = "send_msg", chat_msg = "Successfully connected to server" }))
+	GlobalChatInstance = GlobalChat.init()
+
+	-- get old messages
+	local oldMessages = GlobalChatInstance:fetchMessages()
+
+	for i, message in ipairs(oldMessages) do
+		GlobalChatInstance:addMessage(message.message, message.msgType, message.sender)
+	end
+
 
 	-- Listen for messages
 	connectionManager:NewConnection(ws.OnMessage, function(msg)
@@ -343,7 +387,6 @@ local function connectToServer()
 		end
 
 		if action == "msg_received" then
-			print(data.message, data.msgType, data.sender)
 			GlobalChatInstance:addMessage(data.message, data.msgType, data.sender)
 		end
 
@@ -351,8 +394,6 @@ local function connectToServer()
 			GlobalChatInstance.LastMessageSent = true
 		end
 	end)
-
-	GlobalChatInstance = GlobalChat.init()
 
 	-- Listen for close
 	connectionManager:NewConnection(ws.OnClose, function()
