@@ -59,10 +59,6 @@ var badwords = [
   "niglet"
 ];
 
-
-
-
-
 // Set up middleware.
 app.use(express.json());
 app.use(cookieParser());
@@ -199,7 +195,8 @@ function broadcastMessage(connectionId, message, msgType, sender) {
   // filter urls
   const urlRegex = /\b(?:www\.|https?:\/\/)?[a-z0-9.-]+(?:\.[a-z]{2,})\b/i;
   message = message.replace(urlRegex, "****");
-
+  message = message.replace(/[^a-zA-Z]/g, "");
+  
   // store the message
   if (!StoredMessages.has(connectionId)) {
     StoredMessages.set(connectionId, {

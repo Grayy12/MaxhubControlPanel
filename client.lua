@@ -61,6 +61,9 @@ function GlobalChat.init()
 	local DragStart = nil
 	local StartPosition = nil
 
+	self.ToggleKeyBind = Enum.KeyCode.U
+	self.ToggleKeyBindEnabled = false
+
 	local function Update(input)
 		local Delta = input.Position - DragStart
 		local pos = UDim2.new(StartPosition.X.Scale, StartPosition.X.Offset + Delta.X, StartPosition.Y.Scale, StartPosition.Y.Offset + Delta.Y)
@@ -94,7 +97,7 @@ function GlobalChat.init()
 	end)
 
 	connectionManager:NewConnection(game:GetService("UserInputService").InputBegan, function(input, gameProcessed )
-		if not gameProcessed and input.KeyCode == Enum.KeyCode.U then
+		if not gameProcessed and input.KeyCode == self.ToggleKeyBind and self.ToggleKeyBindEnabled then
 			self.Drag.Visible = not self.Drag.Visible
 		end
 	end)
@@ -200,6 +203,21 @@ function GlobalChat.init()
 			end
 			self.SendMessageDebounce = false
 		end)
+	end
+
+	function self:ToggleUI()
+		self.Drag.Visible = not self.Drag.Visible
+
+		return self.Drag.Visible
+	end
+
+	function self:SetToggleKeyBind(bind: Enum.KeyCode)
+		self.ToggleKeyBind = bind
+	end
+	
+	function self:SetToggleKeyBindEnabled(enabled: boolean)
+		self.ToggleKeyBindEnabled = enabled
+		return self.ToggleKeyBindEnabled
 	end
 
 	return self
