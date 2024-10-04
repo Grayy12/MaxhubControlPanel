@@ -8,7 +8,10 @@ const tokenHandler = require("./tokenHandler.js");
 const loginRoute = require("./routes/login.js");
 const logoutRoute = require("./routes/logout.js");
 const tokenRoute = require("./routes/token.js");
+// const badwords = require("./badnonos.json");
+const leoProfanity = require('leo-profanity');
 
+leoProfanity.remove(['fuck', 'shit', 'damn', 'ass', 'bitch']);
 
 // Set up express and WebSocket server.
 const app = express();
@@ -19,45 +22,6 @@ const wss = new WebSocket.Server({
   clientTracking: true,
   path: "/ws",
 });
-
-
-
-var badwords = [
-  "f4nny",
-  "fag",
-  "fagbag",
-  "fagg",
-  "fagging",
-  "faggit",
-  "faggitt",
-  "faggot",
-  "faggs",
-  "fagot",
-  "fagots",
-  "fags",
-  "fagtard",
-  "fanny",
-  "fannyflaps",
-  "fannyfucker",
-  "fanyy",
-  "n1gga",
-  "n1gger",
-  "nambla",
-  "nawashi",
-  "nazi",
-  "negro",
-  "neonazi",
-  "nig nog",
-  "nigg3r",
-  "nigg4h",
-  "nigga",
-  "niggah",
-  "niggas",
-  "niggaz",
-  "nigger",
-  "niggers",
-  "niglet"
-];
 
 // Set up middleware.
 app.use(express.json());
@@ -185,22 +149,32 @@ function addNewUser(connectionId, message) {
 // HANDLE GLOBAL CHAT
 function broadcastMessage(connectionId, message, msgType, sender) {
   // filter words
-  if (Array.isArray(badwords)) {
-    for (const word of badwords) {
-      message = message.replaceAll(word, "****");
-    }
-  } else {
-    console.error("Bad words is not an array");
-  }
-  // filter urls
-  const urlRegex = /\b(?:www\.|https?:\/\/)?[a-z0-9.-]+(?:\.[a-z]{2,})\b/i;
-  message = message.replace(urlRegex, "****");
-  message = message.replace(/[^a-zA-Z]/g, "");
+  // if (Array.isArray(badwords)) {
+  //   for (const word of badwords) {
+  //     message = message.replaceAll(word, "****");
+  //   }
+  // } else {
+  //   console.error("Bad words is not an array");
+  // }
   
+  message = leoProfanity.clean(message);
+
+  // Filter URLs, emails and phone numbers
+  const urlRegex = /\b(?:www\.|https?:\/\/)?[a-z0-9.-]+(?:\.[a-z]{2,})\b/i;
+  const emailRegex = /\b[\w.-]+@[\w.-]+\.\w{2,}\b/i;
+  const phoneRegex = /\b\d{3}-\d{3}-\d{4}\b/i;
+
+  message = message.replace(emailRegex, '****');
+  message = message.replace(phoneRegex, '****');
+  message = message.replace(urlRegex, '****');
+
+  if (message === "" || message.replace(/\s/g, "") === "") {
+    return;
+  }  
   // store the message
   if (!StoredMessages.has(connectionId)) {
     StoredMessages.set(connectionId, {
-      messages: [{ message, timestamp: new Date(), msgType }],
+      messages: [{ message, timestamp: new Date(), msgType, sender }],
     });
   } else {
     const storedMessages = StoredMessages.get(connectionId);

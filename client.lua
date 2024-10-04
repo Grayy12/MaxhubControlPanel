@@ -10,8 +10,11 @@ getgenv().forceClosing = false
 -- Services / Variables
 local connectionManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/Grayy12/EXT/main/connections.lua", true))().new("MaxhubServerStuff")
 local localPlayer = game:GetService("Players").LocalPlayer or game:GetService("Players"):GetPropertyChangedSignal("LocalPlayer"):Wait() and game:GetService("Players").LocalPlayer
-local mouse = localPlayer:GetMouse()
 local httpService = game:GetService("HttpService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+
+local isUserMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
 
 local BASE_URL = "testserver-diki.onrender.com"
 -- local BASE_URL = "localhost:3001"
@@ -35,7 +38,7 @@ local devs = loadstring(game:HttpGet("https://raw.githubusercontent.com/Grayy12/
 local isDev = table.find(devs, localPlayer.UserId)
 
 local function UpdateCanvasSize(Canvas, Constraint)
-	Canvas.CanvasSize = UDim2.new(0, Constraint.AbsoluteContentSize.X, 0, Constraint.AbsoluteContentSize.Y+20)
+	Canvas.CanvasSize = UDim2.new(0, Constraint.AbsoluteContentSize.X, 0, Constraint.AbsoluteContentSize.Y + 3)
 end
 
 local GlobalChat = {}
@@ -45,16 +48,27 @@ function GlobalChat.init()
 	-- 	return
 	-- end -- DEV TESTING
 	local self = {}
+	local oldgui = localPlayer.PlayerGui:FindFirstChild("Maxhub Global Chat")
+	if oldgui then
+		oldgui:Destroy()
+	end
 
-	self.ScreenGui = game:GetObjects("rbxassetid://110126484672625")[1]
+	-- self.ScreenGui = game:GetObjects("rbxassetid://110126484672625")[1]
+	self.ScreenGui = game:GetObjects("rbxassetid://71404790972751")[1]
 
 	self.ScreenGui.Parent = localPlayer.PlayerGui
 
 	self.Drag = self.ScreenGui["Main/Drag"]
+	self.NotificationHolder = self.ScreenGui.NotificationHolder
+	do
+		self.Drag.Visible = not isUserMobile
+	end
+
 	self.Main = self.Drag.Main
-	self.Drag.Visible = false
 	self.MessageHolder = self.Main.ScrollingFrame
 	self.MessageBox = self.Main.Messagebox
+
+	self.MessageHolder.CanvasPosition = Vector2.new(0, self.MessageHolder.AbsoluteCanvasSize.Y)
 
 	local Dragging = nil
 	local DragInput = nil
@@ -62,7 +76,8 @@ function GlobalChat.init()
 	local StartPosition = nil
 
 	self.ToggleKeyBind = Enum.KeyCode.U
-	self.ToggleKeyBindEnabled = false
+	self.ToggleKeyBindEnabled = true
+	self.UIShown = not isUserMobile
 
 	local function Update(input)
 		local Delta = input.Position - DragStart
@@ -96,9 +111,10 @@ function GlobalChat.init()
 		end
 	end)
 
-	connectionManager:NewConnection(game:GetService("UserInputService").InputBegan, function(input, gameProcessed )
+	connectionManager:NewConnection(game:GetService("UserInputService").InputBegan, function(input, gameProcessed)
 		if not gameProcessed and input.KeyCode == self.ToggleKeyBind and self.ToggleKeyBindEnabled then
 			self.Drag.Visible = not self.Drag.Visible
+			self.UIShown = not self.UIShown
 		end
 	end)
 
@@ -125,21 +141,25 @@ function GlobalChat.init()
 		end
 	end)
 
-	self.RobloxChatTemplate = self.MessageHolder.Roblox
+	self.msgTypes = {
+		Roblox = self.MessageHolder.Roblox:Clone(),
+		Discord = self.MessageHolder.Discord:Clone(),
+		Dev = self.MessageHolder.Dev:Clone(),
+	}
 
-	self.RobloxChatTemplate = self.MessageHolder.Roblox:Clone()
-	self.DiscordChatTemplate = self.MessageHolder.Discord:Clone()
-	self.DevChatTemplate = self.MessageHolder.Dev:Clone()
+	self.toastTypes = {
+		Roblox = self.NotificationHolder.RobloxNotification:Clone(),
+		Discord = self.NotificationHolder.DiscordNotification:Clone(),
+		Dev = self.NotificationHolder.DevNotification:Clone(),
+	}
 
 	self.MessageHolder.Roblox:Destroy()
 	self.MessageHolder.Discord:Destroy()
 	self.MessageHolder.Dev:Destroy()
 
-	self.msgTypes = {
-		Roblox = self.RobloxChatTemplate,
-		Discord = self.DiscordChatTemplate,
-		Dev = self.DevChatTemplate,
-	}
+	self.NotificationHolder.RobloxNotification:Destroy()
+	self.NotificationHolder.DiscordNotification:Destroy()
+	self.NotificationHolder.DevNotification:Destroy()
 
 	self.LastMessage = nil
 	self.LastMessageSent = false
@@ -172,7 +192,7 @@ function GlobalChat.init()
 		else
 			message.Text = `{type} [{sender}]: {msg}`
 		end
-		table.foreach(self, print)
+
 		message.Parent = self.MessageHolder
 		UpdateCanvasSize(self.MessageHolder, self.MessageHolder.UIListLayout)
 
@@ -205,19 +225,95 @@ function GlobalChat.init()
 		end)
 	end
 
-	function self:ToggleUI()
-		self.Drag.Visible = not self.Drag.Visible
+	function self:ToggleUI(Visible: boolean?)
+		if Visible ~= nil then
+			self.Drag.Visible = Visible
+			self.UIShown = Visible
+			return self.Drag.Visible
+		end
 
+		self.Drag.Visible = not self.Drag.Visible
+		self.UIShown = not self.UIShown
 		return self.Drag.Visible
 	end
 
-	function self:SetToggleKeyBind(bind: Enum.KeyCode)
-		self.ToggleKeyBind = bind
+	function self:setToggleKeyBind(keyCode: Enum.KeyCode)
+		self.toggleKeyBind = keyCode
+		self.messageBox.PlaceholderText = self.toggleKeyBindEnabled and `Type Something... (Press {self.toggleKeyBind.Name} to close)` or `Type Something...`
 	end
-	
+
 	function self:SetToggleKeyBindEnabled(enabled: boolean)
 		self.ToggleKeyBindEnabled = enabled
 		return self.ToggleKeyBindEnabled
+	end
+
+	self.ActiveNotifications = {}
+
+	local function updateActiveNotificationPositions()
+		for i, toast in ipairs(self.ActiveNotifications) do
+			toast.notification.Position = UDim2.new(0.5, 0, 0.85 - (0.20 * (i - 1)), 0)
+			toast.index = i
+		end
+	end
+
+	-- Toast Notifications
+	function self:Toast(type: "Discord" | "Roblox" | "Dev", name: string, text: string, duration: number)
+		if self.UIShown then
+			return
+		end
+		updateActiveNotificationPositions()
+
+		local toast = self.toastTypes[type]:Clone()
+		toast:FindFirstChild("Name").Text = name
+		toast.Message.Text = text
+		toast.Parent = self.NotificationHolder
+		local toasttable = { notification = toast, index = #self.ActiveNotifications + 1 }
+		table.insert(self.ActiveNotifications, toasttable)
+		toast.Position = UDim2.new(1.5, 0, 0.85 - ((toasttable.index - 1) * 0.20), 0)
+
+		connectionManager:NewConnection(toast.Interact.MouseEnter, function()
+			TweenService:Create(toast, TweenInfo.new(0.23, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+				BackgroundColor3 = Color3.fromRGB(29, 29, 29),
+			}):Play()
+		end)
+
+		connectionManager:NewConnection(toast.Interact.MouseLeave, function()
+			TweenService:Create(toast, TweenInfo.new(0.23, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+				BackgroundColor3 = Color3.fromRGB(40, 40, 40),
+			}):Play()
+		end)
+
+		connectionManager:NewConnection(toast.Interact.MouseButton1Click, function()
+			toast:Destroy()
+			self:ToggleUI(true)
+			table.remove(self.ActiveNotifications, table.find(self.ActiveNotifications, toasttable))
+			updateActiveNotificationPositions()
+		end)
+
+		if not toast then
+			return
+		end
+
+		local tween = TweenService:Create(toast, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+			Position = UDim2.new(0.5, 0, 0.85 - ((toasttable.index - 1) * 0.20), 0),
+		})
+
+		tween:Play()
+		tween.Completed:Wait()
+
+		task.delay(duration, function()
+			-- tween out
+			if not toast then
+				return
+			end
+			tween = TweenService:Create(toast, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+				Position = UDim2.new(1.5, 0, 0.85 - ((toasttable.index - 1) * 0.20), 0),
+			})
+			tween:Play()
+			tween.Completed:Wait()
+			table.remove(self.ActiveNotifications, table.find(self.ActiveNotifications, toasttable))
+			updateActiveNotificationPositions()
+		end)
 	end
 
 	return self
@@ -385,6 +481,10 @@ local function connectToServer()
 
 	-- ws:Send(httpService:JSONEncode({ action = "send_msg", chat_msg = "Successfully connected to server" }))
 	GlobalChatInstance = GlobalChat.init()
+	GlobalChatInstance:ToggleUI(false)
+	if not isUserMobile then
+		GlobalChatInstance:Toast("Roblox", "Maxhub", "Press U to open Global Chat", 3)
+	end
 
 	-- get old messages
 	local oldMessages = GlobalChatInstance:fetchMessages()
@@ -392,7 +492,6 @@ local function connectToServer()
 	for i, message in ipairs(oldMessages) do
 		GlobalChatInstance:addMessage(message.message, message.msgType, message.sender)
 	end
-
 
 	-- Listen for messages
 	connectionManager:NewConnection(ws.OnMessage, function(msg)
@@ -413,6 +512,7 @@ local function connectToServer()
 
 		if action == "msg_received" then
 			GlobalChatInstance:addMessage(data.message, data.msgType, data.sender)
+			GlobalChatInstance:Toast(data.msgType, data.sender, data.message, 3)
 		end
 
 		if action == "msg_sent" then
@@ -428,6 +528,10 @@ local function connectToServer()
 	end)
 end
 
-pcall(connectToServer)
+local s, e = pcall(connectToServer)
+
+if not s then
+	warn(e)
+end
 
 return GlobalChatInstance
