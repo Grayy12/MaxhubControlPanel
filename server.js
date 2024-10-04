@@ -167,6 +167,7 @@ function broadcastMessage(connectionId, message, msgType, sender) {
   message = message.replace(emailRegex, '****');
   message = message.replace(phoneRegex, '****');
   message = message.replace(urlRegex, '****');
+  message = message.replace(/`/g, "");
 
   if (message === "" || message.replace(/\s/g, "") === "") {
     return;
