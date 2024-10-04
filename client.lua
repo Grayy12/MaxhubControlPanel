@@ -512,7 +512,7 @@ local function connectToServer()
 
 		if action == "msg_received" then
 			GlobalChatInstance:addMessage(data.message, data.msgType, data.sender)
-			GlobalChatInstance:Toast(data.msgType, data.sender, data.message, 3)
+			coroutine.wrap(GlobalChatInstance.Toast)(GlobalChatInstance, data.msgType, data.sender, data.message, 3)
 		end
 
 		if action == "msg_sent" then
