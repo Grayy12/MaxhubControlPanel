@@ -44,9 +44,9 @@ end
 local GlobalChat = {}
 
 function GlobalChat.init()
-	-- if not isDev then
-	-- 	return
-	-- end -- DEV TESTING
+	if isUserMobile then
+		return
+	end -- DEV TESTING
 	local self = {}
 	local oldgui = localPlayer.PlayerGui:FindFirstChild("Maxhub Global Chat")
 	if oldgui then
@@ -481,13 +481,16 @@ local function connectToServer()
 
 	-- ws:Send(httpService:JSONEncode({ action = "send_msg", chat_msg = "Successfully connected to server" }))
 	GlobalChatInstance = GlobalChat.init()
-	GlobalChatInstance:ToggleUI(false)
-	if not isUserMobile then
-		GlobalChatInstance:Toast("Roblox", "Maxhub", "Press U to open Global Chat", 3)
+	if GlobalChatInstance then
+		GlobalChatInstance:ToggleUI(false)
+		if not isUserMobile then
+			GlobalChatInstance:Toast("Roblox", "Maxhub", "Press U to open Global Chat", 3)
+		end
 	end
 
 	-- get old messages
-	local oldMessages = GlobalChatInstance:fetchMessages()
+	
+	local oldMessages = GlobalChatInstance and GlobalChatInstance:fetchMessages() or {}
 
 	for i, message in ipairs(oldMessages) do
 		GlobalChatInstance:addMessage(message.message, message.msgType, message.sender)
@@ -510,12 +513,12 @@ local function connectToServer()
 			ws:Send(httpService:JSONEncode({ action = "pong" }))
 		end
 
-		if action == "msg_received" then
+		if action == "msg_received" and GlobalChatInstance then
 			GlobalChatInstance:addMessage(data.message, data.msgType, data.sender)
 			coroutine.wrap(GlobalChatInstance.Toast)(GlobalChatInstance, data.msgType, data.sender, data.message, 3)
 		end
 
-		if action == "msg_sent" then
+		if action == "msg_sent" and GlobalChatInstance then
 			GlobalChatInstance.LastMessageSent = true
 		end
 	end)

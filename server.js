@@ -210,7 +210,7 @@ function getAllStoredMessages() {
   for (const [_, storedMessages] of StoredMessages.entries()) {
     messages.push(...storedMessages.messages);
   }
-  return messages;
+  return messages.sort((a, b) => a.timestamp - b.timestamp);
 }
 
 // Delete message older than a day
