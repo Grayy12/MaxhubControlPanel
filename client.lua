@@ -67,6 +67,7 @@ function GlobalChat.init()
 	self.Main = self.Drag.Main
 	self.MessageHolder = self.Main.ScrollingFrame
 	self.MessageBox = self.Main.Messagebox
+	self.ToggleToast = self.Main.ToggleToast
 
 	self.MessageHolder.CanvasPosition = Vector2.new(0, self.MessageHolder.AbsoluteCanvasSize.Y)
 
@@ -78,6 +79,7 @@ function GlobalChat.init()
 	self.ToggleKeyBind = Enum.KeyCode.U
 	self.ToggleKeyBindEnabled = true
 	self.UIShown = not isUserMobile
+	self.Toasts = true
 
 	local function Update(input)
 		local Delta = input.Position - DragStart
@@ -139,6 +141,11 @@ function GlobalChat.init()
 			self:SendMessage(message, isDev and "Dev" or "Roblox")
 			self.MessageBox.Text = ""
 		end
+	end)
+
+	connectionManager:NewConnection(self.ToggleToast.MouseButton1Click, function()
+			self.Toasts = not self.Toasts
+			self.ToggleToast.Text = self.Toasts and "Disable Notifications" or "Enable Notifications"
 	end)
 
 	self.msgTypes = {
@@ -258,7 +265,7 @@ function GlobalChat.init()
 
 	-- Toast Notifications
 	function self:Toast(type: "Discord" | "Roblox" | "Dev", name: string, text: string, duration: number)
-		if self.UIShown then
+		if self.UIShown or not self.Toasts then
 			return
 		end
 		updateActiveNotificationPositions()
