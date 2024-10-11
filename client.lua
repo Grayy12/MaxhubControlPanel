@@ -1,6 +1,7 @@
-local queuetp = queue_on_teleport or queueonteleport or function(v) end
+return -- shutdown
+--local queuetp = queue_on_teleport or queueonteleport or function(v) end
 
-queuetp('loadstring(game:HttpGet("https://raw.githubusercontent.com/Grayy12/MaxhubControlPanel/main/client.lua",true))()')
+--queuetp('loadstring(game:HttpGet("https://raw.githubusercontent.com/Grayy12/MaxhubControlPanel/main/client.lua",true))()')
 
 if getgenv().oldws then
 	getgenv().forceClosing = true
