@@ -8,8 +8,8 @@ const tokenHandler = require("./tokenHandler.js");
 const loginRoute = require("./routes/login.js");
 const logoutRoute = require("./routes/logout.js");
 const tokenRoute = require("./routes/token.js");
-// const badwords = require("./badnonos.json");
 const leoProfanity = require('leo-profanity');
+const { SaveToJSON, LoadFromJSON } = require("./utils/savetojson.js");
 
 leoProfanity.remove(['fuck', 'shit', 'damn', 'ass', 'bitch']);
 
@@ -41,6 +41,7 @@ function handleResponse(message) {
 
 const ConnectedClients = new Map();
 const ConnectedAdmins = new Map();
+const BannedUsers = [];
 
 const StoredMessages = new Map();
 
@@ -147,18 +148,11 @@ function addNewUser(connectionId, message) {
 }
 
 // HANDLE GLOBAL CHAT
-function broadcastMessage(connectionId, message, msgType, sender) {
-  // filter words
-  // if (Array.isArray(badwords)) {
-  //   for (const word of badwords) {
-  //     message = message.replaceAll(word, "****");
-  //   }
-  // } else {
-  //   console.error("Bad words is not an array");
-  // }
+function broadcastMessage(connectionId, message, msgType, sender, senderID) {
   
-  message = leoProfanity.clean(message);
-
+  if (BannedUsers.includes(senderID)) {
+    return;
+  }
   // Filter URLs, emails and phone numbers
   const urlRegex = /\b(?:www\.|https?:\/\/)?[a-z0-9.-]+(?:\.[a-z]{2,})\b/i;
   const emailRegex = /\b[\w.-]+@[\w.-]+\.\w{2,}\b/i;
@@ -168,6 +162,7 @@ function broadcastMessage(connectionId, message, msgType, sender) {
   message = message.replace(phoneRegex, '****');
   message = message.replace(urlRegex, '****');
   message = message.replace(/`/g, "");
+  message = leoProfanity.clean(message);
 
   if (message === "" || message.replace(/\s/g, "") === "") {
     return;
@@ -258,30 +253,31 @@ app.get("/messages", (req, res) => {
   res.send({ messages: messages });
 });
 
-// app.post("/run", tokenHandler.authenticateToken, (req, res) => {
-//   const { user, cmd, args } = req.body;
-//   const userExists = findUserByUsername(user);
+app.post("/ban", (req, res) => {
+  const { id, token } = req.body;
 
-//   if (userExists) {
-//     console.log(
-//       `Sending command to user: ${user}, Command: ${cmd}, Args: ${args}, Connection ID: ${userExists.connectionId}`
-//     );
-//     if (userExists.ws.readyState === WebSocket.OPEN) {
-//       userExists.ws.send(
-//         JSON.stringify({ sender: req.user.id, action: "run", cmd, args })
-//       );
-//       res.send({ success: true });
-//     } else {
-//       console.log(
-//         `User ${user} connection is not open. Current state: ${userExists.ws.readyState}`
-//       );
-//       res.send({ success: false, error: "User connection is not open" });
-//     }
-//   } else {
-//     console.log(`User not found: ${user}`);
-//     res.send({ success: false, error: "User not found" });
-//   }
-// });
+  if (token !== process.env.BAN_TOKEN) {
+    res.send({ success: false, error: "Invalid token" });
+    return;
+  }
+
+  BannedUsers.push(id);
+  SaveToJSON(BannedUsers);
+  res.send({ success: true });
+});
+
+app.post("/unban", (req, res) => {
+  const { id, token } = req.body;
+
+  if (token !== process.env.BAN_TOKEN) {
+    res.send({ success: false, error: "Invalid token" });
+    return;
+  }
+
+  BannedUsers = BannedUsers.filter((user) => user !== id);
+  SaveToJSON(BannedUsers);
+  res.send({ success: true });
+});
 
 app.post("/run", tokenHandler.authenticateToken, (req, res) => {
   const { user, cmd, args } = req.body;
@@ -362,6 +358,8 @@ const port = process.env.PORT || 3001;
 // Start the server and listen on the specified port
 server.listen(port, "0.0.0.0", () => {
   console.log(`Server listening on port ${port}`);
+
+  BannedUsers = LoadFromJSON();
 
   // constantly ping the server ping endpoint to keep the connection alive
   setInterval(async () => {
