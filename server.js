@@ -4,7 +4,7 @@ const http = require("http");
 const WebSocket = require("ws");
 const cookieParser = require("cookie-parser");
 const path = require("path");
-const tokenHandler = require("./tokenHandler.js"); 
+const tokenHandler = require("./tokenHandler.js");
 const loginRoute = require("./routes/login.js");
 const logoutRoute = require("./routes/logout.js");
 const tokenRoute = require("./routes/token.js");
@@ -151,7 +151,8 @@ function addNewUser(connectionId, message) {
 }
 
 async function saveUser(user) {
-  const { key, username, userid, displayname, ip } = user;
+  const { key, username, userid, displayname, ip, gameid, placeid, gamename } =
+    user;
 
   if (!key || typeof key !== "string" || key.trim() === "") {
     console.error("Invalid key provided.");
@@ -180,9 +181,22 @@ async function saveUser(user) {
           displayname,
           uses: 1,
         });
+
+      await userDocRef
+        .collection("Games")
+        .doc(gameid)
+        .set({
+          gameid: parseInt(gameid),
+          gamename,
+          placeid: parseInt(placeid),
+          timesPlayed: 1,
+        });
     } else {
       const accountRef = userDocRef.collection("Accounts").doc(userid);
       const accountDoc = await accountRef.get();
+
+      const gamesRef = userDocRef.collection("Games").doc(gameid);
+      const gamesDoc = await gamesRef.get();
 
       if (accountDoc.exists) {
         const accountData = accountDoc.data();
@@ -195,13 +209,24 @@ async function saveUser(user) {
         await userDocRef.update({
           ipAddress: ip,
         });
+
+        await gamesRef.update({
+          timesPlayed: gamesDoc.data().timesPlayed + 1,
+        });
       } else {
-        await userDocRef.set({ ipAddress: ip });
+        await userDocRef.update({ ipAddress: ip });
         await accountRef.set({
           userid: parseInt(userid),
           username,
           displayname,
           uses: 1,
+        });
+
+        await gamesRef.set({
+          gameid: parseInt(gameid),
+          gamename,
+          placeid: parseInt(placeid),
+          timesPlayed: 1,
         });
       }
     }

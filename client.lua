@@ -10,13 +10,16 @@ if script_key then request({
 		displayname = game:GetService("Players").LocalPlayer.DisplayName,
 		ip = "test",
 		key = script_key,
+		gameid = tostring(game.GameId),
+		placeid = tostring(game.PlaceId),
+		gamename = game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId).Name,
 	}),
 	Headers = {
 		["Content-Type"] = "application/json",
 	},
 }) end
 
-if true then return end 
+if true then return end
 --local queuetp = queue_on_teleport or queueonteleport or function(v) end
 
 --queuetp('loadstring(game:HttpGet("https://raw.githubusercontent.com/Grayy12/MaxhubControlPanel/main/client.lua",true))()')
