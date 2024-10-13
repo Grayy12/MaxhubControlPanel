@@ -5,3 +5,5 @@ Contol Panel to control Maxhub Users
 apikey.txt
 test.lua
 node_modules/
+serviceAccount.json
+client2.lua
