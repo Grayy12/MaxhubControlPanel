@@ -19,7 +19,7 @@ if script_key then request({
 	},
 }) end
 
-if true then return end
+--if true then return end
 --local queuetp = queue_on_teleport or queueonteleport or function(v) end
 
 --queuetp('loadstring(game:HttpGet("https://raw.githubusercontent.com/Grayy12/MaxhubControlPanel/main/client.lua",true))()')
