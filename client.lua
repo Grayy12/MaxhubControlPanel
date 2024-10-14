@@ -12,7 +12,7 @@ if script_key then request({
 		gameid = tostring(game.GameId),
 		placeid = tostring(game.PlaceId),
 		gamename = game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId).Name,
-		discordid = tostring(LRM_LinkedDiscordID) or "No Discord Linked",
+		discordid = LRM_LinkedDiscordID and tostring(LRM_LinkedDiscordID) or "No Discord Linked",
 	}),
 	Headers = {
 		["Content-Type"] = "application/json",
