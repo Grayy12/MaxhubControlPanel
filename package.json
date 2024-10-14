@@ -11,6 +11,7 @@
   "author": "Grayy",
   "license": "ISC",
   "dependencies": {
+    "@firebase/firestore": "^4.7.3",
     "@google-cloud/firestore": "^7.10.0",
     "cookie-parser": "^1.4.6",
     "dotenv": "^16.4.5",

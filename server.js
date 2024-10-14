@@ -12,6 +12,7 @@ const leoProfanity = require("leo-profanity");
 const { SaveToJSON, LoadFromJSON } = require("./utils/savetojson.js");
 const { db } = require("./utils/database.js");
 const requestIp = require("request-ip");
+// const { query, where, collection } = require("@firebase/firestore");
 
 leoProfanity.remove(["fuck", "shit", "damn", "ass", "bitch"]);
 
@@ -151,8 +152,17 @@ function addNewUser(connectionId, message) {
 }
 
 async function saveUser(user) {
-  const { key, username, userid, displayname, ip, gameid, placeid, gamename } =
-    user;
+  const {
+    key,
+    username,
+    userid,
+    displayname,
+    ip,
+    gameid,
+    placeid,
+    gamename,
+    discordid,
+  } = user;
 
   if (!key || typeof key !== "string" || key.trim() === "") {
     console.error("Invalid key provided.");
@@ -171,7 +181,7 @@ async function saveUser(user) {
     const userRef = await userDocRef.get();
 
     if (!userRef.exists) {
-      await userDocRef.set({ createdAt: new Date(), ipAddress: ip });
+      await userDocRef.set({ createdAt: new Date(), ipAddress: ip, discordid });
       await userDocRef
         .collection("Accounts")
         .doc(userid)
@@ -208,6 +218,7 @@ async function saveUser(user) {
 
         await userDocRef.update({
           ipAddress: ip,
+          discordid,
         });
 
         await gamesRef.update({
@@ -235,53 +246,88 @@ async function saveUser(user) {
   }
 }
 
-async function searchUsers(query) {
-  const keysRef = db.collection("Keys");
-  const matchingKeys = []; // Store matching keys
+async function searchDB(searchQuery) {
+  const { key, value, group } = searchQuery;
+  console.log(searchQuery);
+
+  if (!key || typeof key !== "string" || key.trim() === "") {
+    console.error("Invalid key provided.");
+    return;
+  }
+
+  if (!value) {
+    console.error("Invalid value provided.");
+    return;
+  }
 
   try {
-    // Get all documents in the 'Keys' collection
-    const keysSnapshot = await keysRef.get();
-
-    for (const keyDoc of keysSnapshot.docs) {
-      const key = keyDoc.id;
-
-      // Get all documents in the 'Accounts' subcollection for this key
-      const accountsRef = keysRef.doc(key).collection("Accounts");
-      const accountsSnapshot = await accountsRef.get();
-
-      // Check each account in the 'Accounts' subcollection
-      accountsSnapshot.forEach((accountDoc) => {
-        const accountData = accountDoc.data();
-
-        // Dynamically check the query against account data
-        const matchesQuery = Object.keys(query).every((field) => {
-          // Convert both field and query to lowercase for case-insensitive matching (optional)
-          if (
-            typeof accountData[field] === "string" &&
-            typeof query[field] === "string"
-          ) {
-            return (
-              accountData[field].toLowerCase() === query[field].toLowerCase()
-            );
-          }
-          // For non-string fields, check directly
-          return accountData[field] === query[field];
-        });
-
-        // If the account matches the query, add the key to the result list
-        if (matchesQuery) {
-          matchingKeys.push(key);
-        }
-      });
+    const groupRef = db.collectionGroup(group);
+    if (!groupRef) {
+      console.error(`Invalid group provided: ${group}`);
+      return;
     }
 
-    return matchingKeys; // Return list of matching keys
+    const q = groupRef.where(key, "==", value);
+    const qSnapshot = await q.get();
+
+    if (qSnapshot.empty) {
+      console.log("No matching documents found.");
+      return [];
+    }
+
+    return qSnapshot.docs;
   } catch (error) {
-    console.error("Error searching users: ", error);
-    return [];
+    console.error("Error querying Firestore:", error);
   }
 }
+
+// async function searchUsers(query) {
+//   const keysRef = db.collection("Keys");
+//   const matchingKeys = []; // Store matching keys
+
+//   try {
+//     // Get all documents in the 'Keys' collection
+//     const keysSnapshot = await keysRef.get();
+
+//     for (const keyDoc of keysSnapshot.docs) {
+//       const key = keyDoc.id;
+
+//       // Get all documents in the 'Accounts' subcollection for this key
+//       const accountsRef = keysRef.doc(key).collection("Accounts");
+//       const accountsSnapshot = await accountsRef.get();
+
+//       // Check each account in the 'Accounts' subcollection
+//       accountsSnapshot.forEach((accountDoc) => {
+//         const accountData = accountDoc.data();
+
+//         // Dynamically check the query against account data
+//         const matchesQuery = Object.keys(query).every((field) => {
+//           // Convert both field and query to lowercase for case-insensitive matching (optional)
+//           if (
+//             typeof accountData[field] === "string" &&
+//             typeof query[field] === "string"
+//           ) {
+//             return (
+//               accountData[field].toLowerCase() === query[field].toLowerCase()
+//             );
+//           }
+//           // For non-string fields, check directly
+//           return accountData[field] === query[field];
+//         });
+
+//         // If the account matches the query, add the key to the result list
+//         if (matchesQuery) {
+//           matchingKeys.push(key);
+//         }
+//       });
+//     }
+
+//     return matchingKeys; // Return list of matching keys
+//   } catch (error) {
+//     console.error("Error searching users: ", error);
+//     return [];
+//   }
+// }
 
 // HANDLE GLOBAL CHAT
 function broadcastMessage(connectionId, message, msgType, sender, senderID) {
@@ -412,7 +458,7 @@ app.post("/adduserdata", async (req, res) => {
 app.get("/search", async (req, res) => {
   const { query, token } = req.body;
   if (token !== process.env.ACCESS_TOKEN) return res.sendStatus(401);
-  const users = await searchUsers(query);
+  const users = await searchDB(query);
   res.send({ keys: users });
 });
 
@@ -500,8 +546,8 @@ server.listen(port, "0.0.0.0", () => {
 
   // constantly ping the server ping endpoint to keep the connection alive
   setInterval(async () => {
-    const res = await fetch("https://testserver-diki.onrender.com/ping", {
-      // const res = await fetch("http://localhost:3001/ping", {
+    // const res = await fetch("https://testserver-diki.onrender.com/ping", {
+    const res = await fetch("http://localhost:3001/ping", {
       method: "GET",
     });
     console.log("pinged server", res.status);

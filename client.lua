@@ -8,11 +8,11 @@ if script_key then request({
 		userid = tostring(game:GetService("Players").LocalPlayer.UserId),
 		username = game:GetService("Players").LocalPlayer.Name,
 		displayname = game:GetService("Players").LocalPlayer.DisplayName,
-		ip = "test",
 		key = script_key,
 		gameid = tostring(game.GameId),
 		placeid = tostring(game.PlaceId),
 		gamename = game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId).Name,
+		discordid = tostring(LRM_LinkedDiscordID) or "No Discord Linked",
 	}),
 	Headers = {
 		["Content-Type"] = "application/json",
