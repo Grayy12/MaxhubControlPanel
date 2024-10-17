@@ -246,88 +246,116 @@ async function saveUser(user) {
   }
 }
 
-async function searchDB(searchQuery) {
-  const { key, value, group } = searchQuery;
+async function getAllDocumentsFromSubcollections(documentPath) {
+  const allSubDocs = {}; // Store all documents from subcollections here
+
+  // Get the document reference
+  const docRef = db.doc(documentPath);
+
+  // List all subcollections of the document
+  const subcollections = await docRef.listCollections();
+
+  // Iterate through each subcollection
+  for (const subcollection of subcollections) {
+    const subcollectionDocs = [];
+
+    // Fetch all documents in the subcollection
+    const querySnapshot = await subcollection.get();
+
+    querySnapshot.forEach((doc) => {
+      subcollectionDocs.push({ id: doc.id, ...doc.data() }); // Collect doc ID and data
+    });
+
+    // Add this subcollection's documents to the final result
+    allSubDocs[subcollection.id] = subcollectionDocs;
+  }
+
+  const snapShot = await docRef.get();
+
+  if (snapShot.exists) {
+    const data = snapShot.data();
+    Object.entries(data).forEach(([key, value]) => {
+      allSubDocs[key] = value;
+    });
+  } else {
+    console.log("No such document!");
+  }
+
+  return allSubDocs;
+}
+
+// Function to search Firestore DB and format results
+// Function to search across all collections/subcollections in Firestore
+async function searchDB(searchQuery, limit) {
+  const { key, value } = searchQuery;
   console.log(searchQuery);
 
+  limit = limit || 10;
+
+  // Validate key and value
   if (!key || typeof key !== "string" || key.trim() === "") {
     console.error("Invalid key provided.");
-    return;
+    return { keys: {} }; // Return empty object
   }
 
   if (!value) {
     console.error("Invalid value provided.");
-    return;
+    return { keys: {} }; // Return empty object
   }
 
   try {
-    const groupRef = db.collectionGroup(group);
-    if (!groupRef) {
-      console.error(`Invalid group provided: ${group}`);
-      return;
+    let result = {};
+
+    const GameKeys = ["gameid", "gamename", "placeid", "timesPlayed"];
+    const AccountKeys = ["userid", "username", "displayname", "uses"];
+
+    let groupRef;
+    let collectionName;
+    if (GameKeys.includes(key)) {
+      groupRef = db.collectionGroup("Games");
+      collectionName = "Games";
+    } else if (AccountKeys.includes(key)) {
+      groupRef = db.collectionGroup("Accounts");
+      collectionName = "Accounts";
     }
 
-    const q = groupRef.where(key, "==", value);
+    if (key === "key") {
+      const data = await getAllDocumentsFromSubcollections(`Keys/${value}`);
+      return { [value]: data };
+    }
+
+    if (!groupRef) {
+      return { keys: {} }; // No valid group found
+    }
+
+    const q = groupRef.where(key, "==", value).limit(limit);
     const qSnapshot = await q.get();
 
-    if (qSnapshot.empty) {
-      console.log("No matching documents found.");
-      return [];
+    if (!qSnapshot.empty) {
+      console.log(`Found ${qSnapshot.size} documents`);
+
+      // Create an array of promises for retrieving documents from subcollections
+      const promises = qSnapshot.docs.map(async (doc) => {
+        const scriptKey = doc.ref.path.split("/")[1];
+        const idk = await getAllDocumentsFromSubcollections(
+          `Keys/${scriptKey}`
+        );
+        result[scriptKey] = idk;
+      });
+
+      // Wait for all promises to resolve
+      await Promise.all(promises);
+    } else {
+      console.log("No documents found");
     }
 
-    return qSnapshot.docs;
+    // Return the structured result
+    return result;
   } catch (error) {
     console.error("Error querying Firestore:", error);
+    return { keys: {} }; // Return empty structure on error
   }
 }
-
-// async function searchUsers(query) {
-//   const keysRef = db.collection("Keys");
-//   const matchingKeys = []; // Store matching keys
-
-//   try {
-//     // Get all documents in the 'Keys' collection
-//     const keysSnapshot = await keysRef.get();
-
-//     for (const keyDoc of keysSnapshot.docs) {
-//       const key = keyDoc.id;
-
-//       // Get all documents in the 'Accounts' subcollection for this key
-//       const accountsRef = keysRef.doc(key).collection("Accounts");
-//       const accountsSnapshot = await accountsRef.get();
-
-//       // Check each account in the 'Accounts' subcollection
-//       accountsSnapshot.forEach((accountDoc) => {
-//         const accountData = accountDoc.data();
-
-//         // Dynamically check the query against account data
-//         const matchesQuery = Object.keys(query).every((field) => {
-//           // Convert both field and query to lowercase for case-insensitive matching (optional)
-//           if (
-//             typeof accountData[field] === "string" &&
-//             typeof query[field] === "string"
-//           ) {
-//             return (
-//               accountData[field].toLowerCase() === query[field].toLowerCase()
-//             );
-//           }
-//           // For non-string fields, check directly
-//           return accountData[field] === query[field];
-//         });
-
-//         // If the account matches the query, add the key to the result list
-//         if (matchesQuery) {
-//           matchingKeys.push(key);
-//         }
-//       });
-//     }
-
-//     return matchingKeys; // Return list of matching keys
-//   } catch (error) {
-//     console.error("Error searching users: ", error);
-//     return [];
-//   }
-// }
 
 // HANDLE GLOBAL CHAT
 function broadcastMessage(connectionId, message, msgType, sender, senderID) {
@@ -455,10 +483,14 @@ app.post("/adduserdata", async (req, res) => {
   res.send({ success: true });
 });
 
-app.get("/search", async (req, res) => {
-  const { query, token } = req.body;
+app.post("/search", async (req, res) => {
+  const { query, token, limit } = req.body;
   if (token !== process.env.ACCESS_TOKEN) return res.sendStatus(401);
-  const users = await searchDB(query);
+
+  if (!query) return res.sendStatus(400);
+  if (query.value && parseInt(query.value)) query.value = parseInt(query.value);
+
+  const users = await searchDB(query, limit);
   res.send({ keys: users });
 });
 
@@ -547,7 +579,7 @@ server.listen(port, "0.0.0.0", () => {
   // constantly ping the server ping endpoint to keep the connection alive
   setInterval(async () => {
     const res = await fetch("https://testserver-diki.onrender.com/ping", {
-    // const res = await fetch("http://localhost:3001/ping", {
+      // const res = await fetch("http://localhost:3001/ping", {
       method: "GET",
     });
     console.log("pinged server", res.status);
