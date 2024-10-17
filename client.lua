@@ -1,3 +1,5 @@
+local LRM_LinkedDiscordID = select(1, ...)
+
 local request = request or http.request or http_request
 local httpService = game:GetService("HttpService")
 
