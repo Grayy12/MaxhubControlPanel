@@ -11,19 +11,15 @@
   "author": "Grayy",
   "license": "ISC",
   "dependencies": {
-    "@firebase/firestore": "^4.7.3",
+    "@2toad/profanity": "^3.0.0",
     "@google-cloud/firestore": "^7.10.0",
     "cookie-parser": "^1.4.6",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "firebase-admin": "^12.6.0",
     "jsonwebtoken": "^9.0.2",
-    "leo-profanity": "^1.7.0",
     "request-ip": "^3.3.0",
     "uuid": "^10.0.0",
     "ws": "^8.18.0"
-  },
-  "devDependencies": {
-    "nodemon": "^3.1.4"
   }
 }

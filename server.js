@@ -8,14 +8,20 @@ const tokenHandler = require("./tokenHandler.js");
 const loginRoute = require("./routes/login.js");
 const logoutRoute = require("./routes/logout.js");
 const tokenRoute = require("./routes/token.js");
-const leoProfanity = require("leo-profanity");
+const { Profanity, CensorType } = require("@2toad/profanity");
 const { SaveToJSON, LoadFromJSON } = require("./utils/savetojson.js");
 const { db } = require("./utils/database.js");
 const requestIp = require("request-ip");
 // const { query, where, collection } = require("@firebase/firestore");
 
-leoProfanity.remove(["fuck", "shit", "damn", "ass", "bitch"]);
-leoProfanity.add(['nigger', 'niggers'])
+const profanity = new Profanity({
+  languages: ["en"],
+  wholeWord: false,
+  grawlix: "****",
+  grawlixChar: "*",
+});
+
+profanity.whitelist.addWords(["fuck", "shit", "damn", "ass", "bitch"]);
 
 // Set up express and WebSocket server.
 const app = express();
@@ -370,7 +376,7 @@ function broadcastMessage(connectionId, message, msgType, sender, senderID) {
   message = message.replace(phoneRegex, "****");
   message = message.replace(urlRegex, "****");
   message = message.replace(/`/g, "");
-  message = leoProfanity.clean(message);
+  message = profanity.censor(message, CensorType.Word);
 
   if (message === "" || message.replace(/\s/g, "") === "") {
     return;
