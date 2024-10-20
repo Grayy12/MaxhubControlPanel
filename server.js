@@ -15,6 +15,7 @@ const requestIp = require("request-ip");
 // const { query, where, collection } = require("@firebase/firestore");
 
 leoProfanity.remove(["fuck", "shit", "damn", "ass", "bitch"]);
+leoProfanity.add(['nigger', 'niggers'])
 
 // Set up express and WebSocket server.
 const app = express();
@@ -208,6 +209,8 @@ async function saveUser(user) {
       const gamesRef = userDocRef.collection("Games").doc(gameid);
       const gamesDoc = await gamesRef.get();
 
+      await userDocRef.update({ ipAddress: ip, discordid });
+
       if (accountDoc.exists) {
         const accountData = accountDoc.data();
         const updatedUses = (accountData.uses || 0) + 1;
@@ -215,29 +218,25 @@ async function saveUser(user) {
         await accountRef.update({
           uses: updatedUses,
         });
-
-        await userDocRef.update({
-          ipAddress: ip,
-          discordid,
-        });
-
-        await gamesRef.update({
-          timesPlayed: gamesDoc.data().timesPlayed + 1,
-        });
       } else {
-        await userDocRef.update({ ipAddress: ip });
         await accountRef.set({
           userid: parseInt(userid),
           username,
           displayname,
           uses: 1,
         });
+      }
 
+      if (!gamesDoc.exists) {
         await gamesRef.set({
           gameid: parseInt(gameid),
           gamename,
           placeid: parseInt(placeid),
           timesPlayed: 1,
+        });
+      } else {
+        await gamesRef.update({
+          timesPlayed: gamesDoc.data().timesPlayed + 1,
         });
       }
     }

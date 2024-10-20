@@ -1,31 +1,28 @@
 local LRM_LinkedDiscordID = select(1, ...)
+do
+	local request = request or http.request or http_request
+	local httpService = game:GetService("HttpService")
 
-local request = request or http.request or http_request
-local httpService = game:GetService("HttpService")
+	if script_key then request({
+		Url = "https://testserver-diki.onrender.com/adduserdata",
+		Method = "POST",
+		Body = httpService:JSONEncode({
+			userid = tostring(game:GetService("Players").LocalPlayer.UserId),
+			username = game:GetService("Players").LocalPlayer.Name,
+			displayname = game:GetService("Players").LocalPlayer.DisplayName,
+			key = script_key,
+			gameid = tostring(game.GameId),
+			placeid = tostring(game.PlaceId),
+			gamename = game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId).Name,
+			discordid = LRM_LinkedDiscordID and tostring(LRM_LinkedDiscordID) or "No Discord Linked",
+		}),
+		Headers = {
+			["Content-Type"] = "application/json",
+		},
+	}) end
+end
 
-if script_key then request({
-	Url = "https://testserver-diki.onrender.com/adduserdata",
-	Method = "POST",
-	Body = httpService:JSONEncode({
-		userid = tostring(game:GetService("Players").LocalPlayer.UserId),
-		username = game:GetService("Players").LocalPlayer.Name,
-		displayname = game:GetService("Players").LocalPlayer.DisplayName,
-		key = script_key,
-		gameid = tostring(game.GameId),
-		placeid = tostring(game.PlaceId),
-		gamename = game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId).Name,
-		discordid = LRM_LinkedDiscordID and tostring(LRM_LinkedDiscordID) or "No Discord Linked",
-	}),
-	Headers = {
-		["Content-Type"] = "application/json",
-	},
-}) end
-
-if game.GameId ~= 1390601379 then return end
---local queuetp = queue_on_teleport or queueonteleport or function(v) end
-
---queuetp('loadstring(game:HttpGet("https://raw.githubusercontent.com/Grayy12/MaxhubControlPanel/main/client.lua",true))()')
-
+-- if game.GameId ~= 1390601379 then return end
 if getgenv().oldws then
 	getgenv().forceClosing = true
 	getgenv().oldws:Close()
@@ -37,6 +34,7 @@ local localPlayer = game:GetService("Players").LocalPlayer or game:GetService("P
 local httpService = game:GetService("HttpService")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
+local CoreGui = (gethui and gethui()) or game:GetService("CoreGui")
 
 local isUserMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
 
@@ -66,15 +64,14 @@ local function UpdateCanvasSize(Canvas, Constraint) Canvas.CanvasSize = UDim2.ne
 local GlobalChat = {}
 
 function GlobalChat.init()
-	if isUserMobile then return end -- DEV TESTING
+	if isUserMobile then return end
 	local self = {}
-	local oldgui = localPlayer.PlayerGui:FindFirstChild("Maxhub Global Chat")
+	local oldgui = CoreGui:FindFirstChild("Maxhub Global Chat")
 	if oldgui then oldgui:Destroy() end
 
-	-- self.ScreenGui = game:GetObjects("rbxassetid://110126484672625")[1]
 	self.ScreenGui = game:GetObjects("rbxassetid://71404790972751")[1]
 
-	self.ScreenGui.Parent = localPlayer.PlayerGui
+	self.ScreenGui.Parent = CoreGui
 
 	self.Drag = self.ScreenGui["Main/Drag"]
 	self.NotificationHolder = self.ScreenGui.NotificationHolder
@@ -403,7 +400,7 @@ local commands = {
 		}
 
 		items["_ScreenGui"].ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-		items["_ScreenGui"].Parent = (gethui and gethui()) or game:GetService("CoreGui")
+		items["_ScreenGui"].Parent = CoreGui
 
 		items["_VideoFrame"].AnchorPoint = Vector2.new(0.5, 0.5)
 		items["_VideoFrame"].Position = UDim2.new(0.5, 0, 0.5, 0)
@@ -483,8 +480,6 @@ local function connectToServer()
 		if not isUserMobile then GlobalChatInstance:Toast("Roblox", "Maxhub", "Press U to open Global Chat", 3) end
 	end
 
-	-- get old messages
-
 	local oldMessages = GlobalChatInstance and GlobalChatInstance:fetchMessages() or {}
 
 	for i, message in ipairs(oldMessages) do
@@ -493,23 +488,25 @@ local function connectToServer()
 
 	-- Listen for messages
 	connectionManager:NewConnection(ws.OnMessage, function(msg)
-		local data = httpService:JSONDecode(msg)
+		task.spawn(function()
+			local data = httpService:JSONDecode(msg)
 
-		local action = data.action
-		local cmd = data.cmd
-		local sender = data.sender
-		local args = data.args
+			local action = data.action
+			local cmd = data.cmd
+			local sender = data.sender
+			local args = data.args
 
-		if action == "run" and commands[cmd] then coroutine.wrap(pcall)(commands[cmd], sender, args) end
+			if action == "run" and commands[cmd] then coroutine.wrap(pcall)(commands[cmd], sender, args) end
 
-		if action == "ping" then ws:Send(httpService:JSONEncode({ action = "pong" })) end
+			if action == "ping" then ws:Send(httpService:JSONEncode({ action = "pong" })) end
 
-		if action == "msg_received" and GlobalChatInstance then
-			GlobalChatInstance:addMessage(data.message, data.msgType, data.sender)
-			coroutine.wrap(GlobalChatInstance.Toast)(GlobalChatInstance, data.msgType, data.sender, data.message, 3)
-		end
+			if action == "msg_received" and GlobalChatInstance then
+				GlobalChatInstance:addMessage(data.message, data.msgType, data.sender)
+				coroutine.wrap(GlobalChatInstance.Toast)(GlobalChatInstance, data.msgType, data.sender, data.message, 3)
+			end
 
-		if action == "msg_sent" and GlobalChatInstance then GlobalChatInstance.LastMessageSent = true end
+			if action == "msg_sent" and GlobalChatInstance then GlobalChatInstance.LastMessageSent = true end
+		end)
 	end)
 
 	-- Listen for close
