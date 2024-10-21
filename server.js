@@ -21,7 +21,7 @@ const profanity = new Profanity({
   grawlixChar: "*",
 });
 
-profanity.whitelist.addWords(["fuck", "shit", "damn", "ass", "bitch"]);
+profanity.removeWords(["fuck", "shit", "damn", "ass", "bitch"]);
 
 // Set up express and WebSocket server.
 const app = express();
