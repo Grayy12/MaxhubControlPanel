@@ -12,6 +12,7 @@ const { Profanity, CensorType } = require("@2toad/profanity");
 const { SaveToJSON, LoadFromJSON } = require("./utils/savetojson.js");
 const { db } = require("./utils/database.js");
 const requestIp = require("request-ip");
+const getLuarmorUser = require("./utils/luarmor.js");
 
 const profanity = new Profanity({
   languages: ["en"],
@@ -172,6 +173,12 @@ async function saveUser(user) {
   } = user;
 
   if (!key || typeof key !== "string" || key.trim() === "") {
+    console.error("Invalid key provided.");
+    return;
+  }
+
+  const luarmorUser = await getLuarmorUser(key);
+  if (!luarmorUser) {
     console.error("Invalid key provided.");
     return;
   }

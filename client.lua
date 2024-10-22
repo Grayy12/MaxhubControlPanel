@@ -2,26 +2,28 @@ local LRM_LinkedDiscordID, LRM_IsUserPremium = select(1, ...), select(2, ...)
 local request = request or http.request or http_request
 
 do -- Logs for maxhub
-	
 	local httpService = game:GetService("HttpService")
 
-	if script_key and LRM_IsUserPremium and request then request({
-		Url = "https://testserver-diki.onrender.com/adduserdata",
-		Method = "POST",
-		Body = httpService:JSONEncode({
-			userid = tostring(game:GetService("Players").LocalPlayer.UserId),
-			username = game:GetService("Players").LocalPlayer.Name,
-			displayname = game:GetService("Players").LocalPlayer.DisplayName,
-			key = script_key,
-			gameid = tostring(game.GameId),
-			placeid = tostring(game.PlaceId),
-			gamename = game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId).Name,
-			discordid = LRM_LinkedDiscordID and tostring(LRM_LinkedDiscordID) or "No Discord Linked",
-		}),
-		Headers = {
-			["Content-Type"] = "application/json",
-		},
-	}) end
+	if script_key and LRM_IsUserPremium and request then
+		local s, e = pcall(request, {
+			Url = "https://testserver-diki.onrender.com/adduserdata",
+			Method = "POST",
+			Body = httpService:JSONEncode({
+				userid = tostring(game:GetService("Players").LocalPlayer.UserId),
+				username = game:GetService("Players").LocalPlayer.Name,
+				displayname = game:GetService("Players").LocalPlayer.DisplayName,
+				key = script_key,
+				gameid = tostring(game.GameId),
+				placeid = tostring(game.PlaceId),
+				gamename = game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId).Name,
+				discordid = LRM_LinkedDiscordID and tostring(LRM_LinkedDiscordID) or "No Discord Linked",
+			}),
+			Headers = {
+				["Content-Type"] = "application/json",
+			},
+		})
+		if not s then warn("MAXHUB ERROR: " .. tostring(e)) end
+	end
 end
 
 if getgenv().oldws then
@@ -472,7 +474,7 @@ end
 -- END GLOBAL CHAT
 
 local function sendCmdResponse(receiver, success, response)
-	request({
+	local s, e = pcall(request, {
 		Url = `{BASE_URL:find("localhost") and "http" or "https"}://{BASE_URL}/sendres`,
 		Method = "POST",
 		Headers = {
@@ -486,6 +488,8 @@ local function sendCmdResponse(receiver, success, response)
 			id = httpService:GenerateGUID(false),
 		}),
 	})
+
+	if not s then warn("MAXHUB ERROR: " .. tostring(e)) end
 end
 
 -- Commands
@@ -611,7 +615,6 @@ local GlobalChatInstance = nil
 
 -- WebSocket Client
 local function connectToServer()
-	
 	ws = WebSocket.connect(`{BASE_URL:find("localhost") and "ws" or "wss"}://{BASE_URL}/ws`)
 	getgenv().oldws = ws
 
@@ -641,7 +644,7 @@ local function connectToServer()
 			local sender = data.sender
 			local args = data.args
 
-			if action == "run" and commands[cmd] then coroutine.wrap(pcall)(commands[cmd], sender, args) end
+			if action == "run" and commands[cmd] then pcall(commands[cmd], sender, args) end
 
 			if action == "ping" then ws:Send(httpService:JSONEncode({ action = "pong" })) end
 
