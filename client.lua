@@ -1,5 +1,5 @@
 local LRM_LinkedDiscordID, LRM_IsUserPremium = select(1, ...), select(2, ...)
-local request = request or http.request or http_request
+local request = request or http.request or http_request or function() error("request not found") end
 
 do -- Logs for maxhub
 	local httpService = game:GetService("HttpService")
@@ -59,7 +59,7 @@ local userdata = {
 	executor = identifyexecutor and identifyexecutor() or "Unknown",
 }
 
-if isUserMobile or not WebSocket or not request then return end
+if isUserMobile or not WebSocket then return end
 -- GLOBAL CHAT
 local devs = loadstring(game:HttpGet("https://raw.githubusercontent.com/Grayy12/MaxhubControlPanel/refs/heads/main/MAXHUBSUPERDEVSIGMAS"))() or { 332721249, 213207428, 7012855056, 7098987458, 2283397273 }
 local isDev = table.find(devs, localPlayer.UserId)
@@ -207,17 +207,17 @@ function GlobalChat.init()
 	self.SendMessageDebounce = false
 
 	function self:fetchMessages()
-		local response = request({
+		local s, response = pcall(request, {
 			Url = `{BASE_URL:find("localhost") and "http" or "https"}://{BASE_URL}/messages`,
 			Method = "GET",
 		})
 
-		if response.StatusCode == 200 then
+		if s and response.StatusCode == 200 then
 			local data = httpService:JSONDecode(response.Body)
 			return data.messages
 		end
 
-		return "Failed to fetch messages"
+		return
 	end
 
 	local gameInviteShowing = false
