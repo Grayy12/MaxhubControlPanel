@@ -1,9 +1,11 @@
 local LRM_LinkedDiscordID, LRM_IsUserPremium = select(1, ...), select(2, ...)
+local request = request or http.request or http_request
+
 do -- Logs for maxhub
-	local request = request or http.request or http_request
+	
 	local httpService = game:GetService("HttpService")
 
-	if script_key and LRM_IsUserPremium then request({
+	if script_key and LRM_IsUserPremium and request then request({
 		Url = "https://testserver-diki.onrender.com/adduserdata",
 		Method = "POST",
 		Body = httpService:JSONEncode({
@@ -22,7 +24,6 @@ do -- Logs for maxhub
 	}) end
 end
 
--- if game.GameId ~= 1390601379 then return end
 if getgenv().oldws then
 	getgenv().forceClosing = true
 	getgenv().oldws:Close()
@@ -56,7 +57,7 @@ local userdata = {
 	executor = identifyexecutor and identifyexecutor() or "Unknown",
 }
 
-if isUserMobile then return end
+if isUserMobile or not WebSocket or not request then return end
 -- GLOBAL CHAT
 local devs = loadstring(game:HttpGet("https://raw.githubusercontent.com/Grayy12/MaxhubControlPanel/refs/heads/main/MAXHUBSUPERDEVSIGMAS"))() or { 332721249, 213207428, 7012855056, 7098987458, 2283397273 }
 local isDev = table.find(devs, localPlayer.UserId)
@@ -610,6 +611,7 @@ local GlobalChatInstance = nil
 
 -- WebSocket Client
 local function connectToServer()
+	
 	ws = WebSocket.connect(`{BASE_URL:find("localhost") and "ws" or "wss"}://{BASE_URL}/ws`)
 	getgenv().oldws = ws
 
