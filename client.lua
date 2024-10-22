@@ -628,7 +628,7 @@ local function connectToServer()
 	local oldMessages = GlobalChatInstance and GlobalChatInstance:fetchMessages() or {}
 
 	for i, message in ipairs(oldMessages) do
-		GlobalChatInstance:addMessage(message.message, message.msgType, message.sender.message.metadata)
+		GlobalChatInstance:addMessage(message.message, message.msgType, message.sender, message.metadata)
 	end
 
 	-- Listen for messages
