@@ -1,9 +1,9 @@
-local LRM_LinkedDiscordID = select(1, ...)
-do
+local LRM_LinkedDiscordID, LRM_IsUserPremium = select(1, ...), select(2, ...)
+do -- Logs for maxhub
 	local request = request or http.request or http_request
 	local httpService = game:GetService("HttpService")
 
-	if script_key then request({
+	if script_key and LRM_IsUserPremium then request({
 		Url = "https://testserver-diki.onrender.com/adduserdata",
 		Method = "POST",
 		Body = httpService:JSONEncode({
@@ -30,7 +30,8 @@ end
 getgenv().forceClosing = false
 -- Services / Variables
 local connectionManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/Grayy12/EXT/main/connections.lua", true))().new("MaxhubServerStuff")
-local localPlayer = game:GetService("Players").LocalPlayer or game:GetService("Players"):GetPropertyChangedSignal("LocalPlayer"):Wait() and game:GetService("Players").LocalPlayer
+local Players = game:GetService("Players")
+local localPlayer = Players.LocalPlayer or Players:GetPropertyChangedSignal("LocalPlayer"):Wait() and Players.LocalPlayer
 local httpService = game:GetService("HttpService")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
@@ -55,6 +56,7 @@ local userdata = {
 	executor = identifyexecutor and identifyexecutor() or "Unknown",
 }
 
+if isUserMobile then return end
 -- GLOBAL CHAT
 local devs = loadstring(game:HttpGet("https://raw.githubusercontent.com/Grayy12/MaxhubControlPanel/refs/heads/main/MAXHUBSUPERDEVSIGMAS"))() or { 332721249, 213207428, 7012855056, 7098987458, 2283397273 }
 local isDev = table.find(devs, localPlayer.UserId)
@@ -69,12 +71,14 @@ function GlobalChat.init()
 	local oldgui = CoreGui:FindFirstChild("Maxhub Global Chat")
 	if oldgui then oldgui:Destroy() end
 
-	self.ScreenGui = game:GetObjects("rbxassetid://71404790972751")[1]
+	-- self.ScreenGui = game:GetObjects("rbxassetid://71404790972751")[1]
+	self.ScreenGui = game:GetObjects("rbxassetid://110126484672625")[1]
 
 	self.ScreenGui.Parent = CoreGui
 
 	self.Drag = self.ScreenGui["Main/Drag"]
 	self.NotificationHolder = self.ScreenGui.NotificationHolder
+	self.GameJoin = self.ScreenGui.GameJoin
 	do
 		self.Drag.Visible = not isUserMobile
 	end
@@ -133,6 +137,7 @@ function GlobalChat.init()
 		warn("Sending message...")
 		if enterPressed then
 			local message = self.MessageBox.Text
+			local inviteType = message:lower() == "/invite"
 
 			if message == "" or not message:match("%S") then return end
 
@@ -145,7 +150,11 @@ function GlobalChat.init()
 				return
 			end
 
-			self:SendMessage(message, isDev and "Dev" or "Roblox")
+			local userdata
+
+			if inviteType then userdata = { jobid = game.JobId, placeid = game.PlaceId, currentPlayers = #Players:GetPlayers(), maxPlayers = Players.MaxPlayers } end
+
+			self:SendMessage(message, isDev and not inviteType and "Dev" or inviteType and "Invite" or LRM_IsUserPremium and "Paid" or "Free", userdata)
 			self.MessageBox.Text = ""
 		end
 	end)
@@ -156,24 +165,38 @@ function GlobalChat.init()
 	end)
 
 	self.msgTypes = {
-		Roblox = self.MessageHolder.Roblox:Clone(),
+		Free = self.MessageHolder.Free:Clone(),
+		Paid = self.MessageHolder.Paid:Clone(),
+		Invite = self.MessageHolder.Invite:Clone(),
 		Discord = self.MessageHolder.Discord:Clone(),
 		Dev = self.MessageHolder.Dev:Clone(),
+	}
+
+	self.msgColors = {
+		Free = { 46, 204, 113 },
+		Paid = { 125, 53, 30 },
+		Invite = { 233, 233, 233 },
+		Dev = { 215, 179, 0 },
+		Discord = { 159, 171, 246 },
 	}
 
 	self.toastTypes = {
 		Roblox = self.NotificationHolder.RobloxNotification:Clone(),
 		Discord = self.NotificationHolder.DiscordNotification:Clone(),
 		Dev = self.NotificationHolder.DevNotification:Clone(),
+		Invite = self.NotificationHolder.InviteNotification:Clone(),
 	}
 
-	self.MessageHolder.Roblox:Destroy()
 	self.MessageHolder.Discord:Destroy()
 	self.MessageHolder.Dev:Destroy()
+	self.MessageHolder.Invite:Destroy()
+	self.MessageHolder.Free:Destroy()
+	self.MessageHolder.Paid:Destroy()
 
 	self.NotificationHolder.RobloxNotification:Destroy()
 	self.NotificationHolder.DiscordNotification:Destroy()
 	self.NotificationHolder.DevNotification:Destroy()
+	self.NotificationHolder.InviteNotification:Destroy()
 
 	self.LastMessage = nil
 	self.LastMessageSent = false
@@ -194,17 +217,134 @@ function GlobalChat.init()
 		return "Failed to fetch messages"
 	end
 
-	function self:addMessage(msg: string, type: "Roblox" | "Discord" | "Dev", sender: string)
+	local gameInviteShowing = false
+	function self:_showGameInvite(sender, metadata)
+		if gameInviteShowing then return end
+		gameInviteShowing = true
+
+		local image: ImageLabel = self.GameJoin.GameImage
+		local cancel: Frame = image.Cancel
+		local join: Frame = image.Join
+		local divider: TextLabel = image.Divider
+		local invitor: TextLabel = image.Invitor
+		local message: TextLabel = image.Message
+		local playerCount: TextLabel = image.Playercount
+		local title: TextLabel = image.Title
+
+		do -- Set positions for showing
+			cancel.Position = UDim2.new(0.78, 0, 1.2, 0)
+			join.Position = UDim2.new(0.89, 0, 1.2, 0)
+			divider.Position = UDim2.new(0.168, 0, 1.2, 0)
+			invitor.Position = UDim2.new(0.216, 0, 1.2, 0)
+			playerCount.Position = UDim2.new(0.034, 0, 1.2, 0)
+			title.Position = UDim2.new(0.034, 0, 1.2, 0)
+			message.Position = UDim2.new(0.5, 0, 1.2, 0)
+		end
+
+		local gameInfo = game:GetService("MarketplaceService"):GetProductInfo(metadata.placeid, Enum.InfoType.Asset)
+		local placeImageId = "rbxassetid://" .. gameInfo["IconImageAssetId"]
+
+		image.Image = placeImageId
+		image.UIGradient.Offset = Vector2.new(0, 1)
+
+		playerCount.Text = `{metadata.currentPlayers}/{metadata.maxPlayers}`
+
+		invitor.Text = sender
+		title.Text = gameInfo.Name
+		do -- Tweening
+			TweenService:Create(self.GameJoin, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {
+				Position = UDim2.new(0.5, 0, 0.159, 0),
+			}):Play()
+			task.wait(0.2)
+			TweenService:Create(title, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {
+				Position = UDim2.new(0.034, 0, 0.685, 0),
+			}):Play()
+			TweenService:Create(image.UIGradient, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {
+				Offset = Vector2.new(0, 0),
+			}):Play()
+			task.wait(0.13)
+			TweenService:Create(playerCount, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {
+				Position = UDim2.new(0.034, 0, 0.847, 0),
+			}):Play()
+			TweenService:Create(divider, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {
+				Position = UDim2.new(0.168, 0, 0.833, 0),
+			}):Play()
+			TweenService:Create(invitor, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {
+				Position = UDim2.new(0.216, 0, 0.847, 0),
+			}):Play()
+			TweenService:Create(cancel, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {
+				Position = UDim2.new(0.78, 0, 0.774, 0),
+			}):Play()
+			TweenService:Create(join, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {
+				Position = UDim2.new(0.89, 0, 0.774, 0),
+			}):Play()
+		end
+
+		join.Interact.MouseButton1Click:Once(function()
+			do -- Tweening
+				TweenService:Create(playerCount, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {
+					Position = UDim2.new(0.034, 0, 1.2, 0),
+				}):Play()
+
+				TweenService:Create(divider, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {
+					Position = UDim2.new(0.168, 0, 1.2, 0),
+				}):Play()
+				TweenService:Create(invitor, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {
+					Position = UDim2.new(0.216, 0, 1.2, 0),
+				}):Play()
+				TweenService:Create(cancel, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {
+					Position = UDim2.new(0.78, 0, 1.2, 0),
+				}):Play()
+				TweenService:Create(join, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {
+					Position = UDim2.new(0.89, 0, 1.2, 0),
+				}):Play()
+				task.wait(0.15)
+				TweenService:Create(title, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {
+					Position = UDim2.new(0.034, 0, 1.2, 0),
+				}):Play()
+				task.wait(0.15)
+				TweenService:Create(image.UIGradient, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {
+					Offset = Vector2.new(0, -1),
+				}):Play()
+			end
+
+			local s = TweenService:Create(message, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {
+				Position = UDim2.new(0.5, 0, 0.5, 0),
+			})
+
+			s:Play()
+			s.Completed:Wait()
+			game:GetService("TeleportService"):TeleportToPlaceInstance(metadata.placeid, metadata.jobid, localPlayer)
+		end)
+
+		cancel.Interact.MouseButton1Click:Once(function()
+			local tween = TweenService:Create(self.GameJoin, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {
+				Position = UDim2.new(0.5, 0, -0.2, 0),
+			})
+			tween:Play()
+			tween.Completed:Wait()
+
+			gameInviteShowing = false
+		end)
+	end
+
+	function self:addMessage(msg: string, type: "Free" | "Paid" | "Invite" | "Discord" | "Dev", sender: string, metadata: { any }?)
 		assert(self.msgTypes[type], "Invalid message type")
 
 		local message = self.msgTypes[type]:Clone()
 
 		msg = msg:sub(1, 64)
 
-		if type == "Roblox" then
-			message.Text = `{sender}: {msg}`
+		if type == "Invite" then
+			message.TextMessage.Text = `<font size="15"><b><font color="rgb({self.msgColors[type][1]}, {self.msgColors[type][2]}, {self.msgColors[type][3]})"><u>{sender} sent a game invite.</u></font></b></font>`
+
+			connectionManager:NewConnection(message.TextMessage.Interact.MouseButton1Click, function()
+				if not metadata or not metadata.jobid or not metadata.placeid or not metadata.currentPlayers or not metadata.maxPlayers then return end
+
+				self:_showGameInvite(sender, metadata)
+			end)
 		else
-			message.Text = `{type} [{sender}]: {msg}`
+			message.TextMessage.Text = `<font color="rgb({self.msgColors[type][1]}, {self.msgColors[type][2]}, {self.msgColors[type][3]})"><b>{type}</b><font size="15"> [{sender}]:</font></font>  {msg}`
 		end
 
 		message.Parent = self.MessageHolder
@@ -213,8 +353,10 @@ function GlobalChat.init()
 		return message
 	end
 
-	function self:SendMessage(msg: string, msg_type: "Roblox" | "Discord" | "Dev")
+	function self:SendMessage(msg: string, msg_type: "Free" | "Paid" | "Invite" | "Discord" | "Dev", metadata: { any }?)
 		if not ws or self.SendMessageDebounce then return end
+
+		metadata = metadata or {}
 
 		self.SendMessageDebounce = true
 
@@ -222,10 +364,11 @@ function GlobalChat.init()
 			action = "send_msg",
 			chat_msg = msg,
 			msg_type = msg_type,
+			metadata = metadata,
 			sender = localPlayer.Name,
 		}))
 
-		local message = self:addMessage(msg, msg_type, localPlayer.Name)
+		local message = self:addMessage(msg, msg_type, localPlayer.Name, metadata)
 
 		task.delay(3, function()
 			if not self.LastMessageSent then
@@ -269,13 +412,13 @@ function GlobalChat.init()
 	end
 
 	-- Toast Notifications
-	function self:Toast(type: "Discord" | "Roblox" | "Dev", name: string, text: string, duration: number)
+	function self:Toast(type: "Discord" | "Roblox" | "Dev" | "Invite", name: string, text: string, duration: number)
 		if self.UIShown or not self.Toasts then return end
 		updateActiveNotificationPositions()
 
 		local toast = self.toastTypes[type]:Clone()
 		toast:FindFirstChild("Name").Text = name
-		toast.Message.Text = text
+		toast.Message.Text = type == "Invite" and "Sent a game invite!" or text
 		toast.Parent = self.NotificationHolder
 		local toasttable = { notification = toast, index = #self.ActiveNotifications + 1 }
 		table.insert(self.ActiveNotifications, toasttable)
@@ -483,7 +626,7 @@ local function connectToServer()
 	local oldMessages = GlobalChatInstance and GlobalChatInstance:fetchMessages() or {}
 
 	for i, message in ipairs(oldMessages) do
-		GlobalChatInstance:addMessage(message.message, message.msgType, message.sender)
+		GlobalChatInstance:addMessage(message.message, message.msgType, message.sender.message.metadata)
 	end
 
 	-- Listen for messages
@@ -501,7 +644,7 @@ local function connectToServer()
 			if action == "ping" then ws:Send(httpService:JSONEncode({ action = "pong" })) end
 
 			if action == "msg_received" and GlobalChatInstance then
-				GlobalChatInstance:addMessage(data.message, data.msgType, data.sender)
+				GlobalChatInstance:addMessage(data.message, data.msgType, data.sender, data.metadata)
 				coroutine.wrap(GlobalChatInstance.Toast)(GlobalChatInstance, data.msgType, data.sender, data.message, 3)
 			end
 

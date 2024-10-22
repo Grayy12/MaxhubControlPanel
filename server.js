@@ -12,7 +12,6 @@ const { Profanity, CensorType } = require("@2toad/profanity");
 const { SaveToJSON, LoadFromJSON } = require("./utils/savetojson.js");
 const { db } = require("./utils/database.js");
 const requestIp = require("request-ip");
-// const { query, where, collection } = require("@firebase/firestore");
 
 const profanity = new Profanity({
   languages: ["en"],
@@ -116,7 +115,8 @@ wss.on("connection", (ws) => {
           connectionId,
           message.chat_msg,
           message.msg_type,
-          message.sender
+          message.sender,
+          message.metadata
         );
       },
       get_msgs: () => {
@@ -289,8 +289,6 @@ async function getAllDocumentsFromSubcollections(documentPath) {
   return allSubDocs;
 }
 
-// Function to search Firestore DB and format results
-// Function to search across all collections/subcollections in Firestore
 async function searchDB(searchQuery, limit) {
   const { key, value } = searchQuery;
   console.log(searchQuery);
@@ -363,7 +361,14 @@ async function searchDB(searchQuery, limit) {
 }
 
 // HANDLE GLOBAL CHAT
-function broadcastMessage(connectionId, message, msgType, sender, senderID) {
+function broadcastMessage(
+  connectionId,
+  message,
+  msgType,
+  sender,
+  senderID,
+  metadata
+) {
   if (BannedUsers.includes(senderID)) {
     return;
   }
@@ -384,7 +389,7 @@ function broadcastMessage(connectionId, message, msgType, sender, senderID) {
   // store the message
   if (!StoredMessages.has(connectionId)) {
     StoredMessages.set(connectionId, {
-      messages: [{ message, timestamp: new Date(), msgType, sender }],
+      messages: [{ message, timestamp: new Date(), msgType, sender, metadata }],
     });
   } else {
     const storedMessages = StoredMessages.get(connectionId);
@@ -393,6 +398,7 @@ function broadcastMessage(connectionId, message, msgType, sender, senderID) {
       timestamp: new Date(),
       msgType,
       sender,
+      metadata,
     });
     StoredMessages.set(connectionId, storedMessages);
   }
@@ -406,7 +412,13 @@ function broadcastMessage(connectionId, message, msgType, sender, senderID) {
   for (const [_, client] of ConnectedClients.entries()) {
     if (client.connectionId !== connectionId) {
       client.ws.send(
-        JSON.stringify({ message, msgType, sender, action: "msg_received" })
+        JSON.stringify({
+          message,
+          msgType,
+          sender,
+          action: "msg_received",
+          metadata,
+        })
       );
     } else {
       client.ws.send(JSON.stringify({ action: "msg_sent" }));
