@@ -35,7 +35,7 @@ getgenv().forceClosing = false
 local connectionManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/Grayy12/EXT/main/connections.lua", true))().new("MaxhubServerStuff")
 local Players = game:GetService("Players")
 local localPlayer = Players.LocalPlayer or Players:GetPropertyChangedSignal("LocalPlayer"):Wait() and Players.LocalPlayer
-local httpService = game:GetService("HttpService")
+local HttpService = game:GetService("HttpService")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local CoreGui = (gethui and gethui()) or game:GetService("CoreGui")
@@ -65,6 +65,15 @@ local devs = loadstring(game:HttpGet("https://raw.githubusercontent.com/Grayy12/
 local isDev = table.find(devs, localPlayer.UserId)
 
 local function UpdateCanvasSize(Canvas, Constraint) Canvas.CanvasSize = UDim2.new(0, Constraint.AbsoluteContentSize.X, 0, Constraint.AbsoluteContentSize.Y + 3) end
+
+local function safeRequest(data: { any }, onlyBody: boolean?)
+	local s, e = pcall(request, data)
+	if not s then
+		warn("MAXHUB ERROR: " .. tostring(e))
+		return
+	end
+	return onlyBody and HttpService:JSONDecode(e.Body) or e
+end
 
 local GlobalChat = {}
 
@@ -207,17 +216,47 @@ function GlobalChat.init()
 	self.SendMessageDebounce = false
 
 	function self:fetchMessages()
-		local s, response = pcall(request, {
+		local response = safeRequest({
 			Url = `{BASE_URL:find("localhost") and "http" or "https"}://{BASE_URL}/messages`,
 			Method = "GET",
 		})
 
-		if s and response.StatusCode == 200 then
-			local data = httpService:JSONDecode(response.Body)
+		if response and response.StatusCode == 200 then
+			local data = HttpService:JSONDecode(response.Body)
 			return data.messages
 		end
 
 		return
+	end
+
+	local function getGameData(placeId)
+		local response = {}
+
+		local universeId = safeRequest({
+			Url = `https://apis.roblox.com/universes/v1/places/{placeId}/universe`,
+			Method = "GET",
+		}, true)
+
+		if not universeId or not universeId.universeId then return end
+
+		universeId = universeId.universeId
+		response.universeId = universeId
+
+		local tumbnailRes = safeRequest({
+			Url = `https://thumbnails.roblox.com/v1/games/multiget/thumbnails?universeIds={universeId}&countPerUniverse=1&defaults=true&size=768x432&format=Png&isCircular=false`,
+			Method = "GET",
+		}, true)
+
+		local gameDataRes = safeRequest({
+			Url = `https://games.roblox.com/v1/games?universeIds={universeId}`,
+			Method = "GET",
+		}, true)
+
+		local thumbnail = tumbnailRes and "rbxassetid://" .. tumbnailRes.data[1].thumbnails[1].targetId
+		local gameData = gameDataRes and gameDataRes.data[1]
+		response.thumbnail = thumbnail
+		response.gameData = gameData
+		return response
 	end
 
 	local gameInviteShowing = false
@@ -242,18 +281,19 @@ function GlobalChat.init()
 			playerCount.Position = UDim2.new(0.034, 0, 1.2, 0)
 			title.Position = UDim2.new(0.034, 0, 1.2, 0)
 			message.Position = UDim2.new(0.5, 0, 1.2, 0)
+			image.UIGradient.Offset = Vector2.new(0, 1)
+		end
+		local gameInfo = getGameData(metadata.placeid)
+		if not gameInfo then
+			gameInviteShowing = false
+			return
 		end
 
-		local gameInfo = game:GetService("MarketplaceService"):GetProductInfo(metadata.placeid, Enum.InfoType.Asset)
-		local placeImageId = "rbxassetid://" .. gameInfo["IconImageAssetId"]
-
-		image.Image = placeImageId
-		image.UIGradient.Offset = Vector2.new(0, 1)
-
+		image.Image = gameInfo.thumbnail
+		invitor.Text = sender
+		title.Text = gameInfo.gameData.name
 		playerCount.Text = `{metadata.currentPlayers}/{metadata.maxPlayers}`
 
-		invitor.Text = sender
-		title.Text = gameInfo.Name
 		do -- Tweening
 			TweenService:Create(self.GameJoin, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {
 				Position = UDim2.new(0.5, 0, 0.159, 0),
@@ -363,7 +403,7 @@ function GlobalChat.init()
 
 		self.SendMessageDebounce = true
 
-		ws:Send(httpService:JSONEncode({
+		ws:Send(HttpService:JSONEncode({
 			action = "send_msg",
 			chat_msg = msg,
 			msg_type = msg_type,
@@ -474,22 +514,20 @@ end
 -- END GLOBAL CHAT
 
 local function sendCmdResponse(receiver, success, response)
-	local s, e = pcall(request, {
+	safeRequest({
 		Url = `{BASE_URL:find("localhost") and "http" or "https"}://{BASE_URL}/sendres`,
 		Method = "POST",
 		Headers = {
 			["Content-Type"] = "application/json",
 		},
-		Body = httpService:JSONEncode({
+		Body = HttpService:JSONEncode({
 			sender = localPlayer.Name,
 			receiver = receiver,
 			success = success,
 			response = response,
-			id = httpService:GenerateGUID(false),
+			id = HttpService:GenerateGUID(false),
 		}),
 	})
-
-	if not s then warn("MAXHUB ERROR: " .. tostring(e)) end
 end
 
 -- Commands
@@ -619,7 +657,7 @@ local function connectToServer()
 	getgenv().oldws = ws
 
 	-- Send user data so the server knows who we are
-	ws:Send(httpService:JSONEncode(userdata))
+	ws:Send(HttpService:JSONEncode(userdata))
 
 	-- ws:Send(httpService:JSONEncode({ action = "send_msg", chat_msg = "Successfully connected to server" }))
 	GlobalChatInstance = GlobalChat.init()
@@ -637,7 +675,7 @@ local function connectToServer()
 	-- Listen for messages
 	connectionManager:NewConnection(ws.OnMessage, function(msg)
 		task.spawn(function()
-			local data = httpService:JSONDecode(msg)
+			local data = HttpService:JSONDecode(msg)
 
 			local action = data.action
 			local cmd = data.cmd
@@ -646,7 +684,7 @@ local function connectToServer()
 
 			if action == "run" and commands[cmd] then pcall(commands[cmd], sender, args) end
 
-			if action == "ping" then ws:Send(httpService:JSONEncode({ action = "pong" })) end
+			if action == "ping" then ws:Send(HttpService:JSONEncode({ action = "pong" })) end
 
 			if action == "msg_received" and GlobalChatInstance then
 				GlobalChatInstance:addMessage(data.message, data.msgType, data.sender, data.metadata)

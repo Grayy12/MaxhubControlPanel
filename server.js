@@ -368,17 +368,7 @@ async function searchDB(searchQuery, limit) {
 }
 
 // HANDLE GLOBAL CHAT
-function broadcastMessage(
-  connectionId,
-  message,
-  msgType,
-  sender,
-  senderID,
-  metadata
-) {
-  if (BannedUsers.includes(senderID)) {
-    return;
-  }
+function broadcastMessage(connectionId, message, msgType, sender, metadata) {
   // Filter URLs, emails and phone numbers
   const urlRegex = /\b(?:www\.|https?:\/\/)?[a-z0-9.-]+(?:\.[a-z]{2,})\b/i;
   const emailRegex = /\b[\w.-]+@[\w.-]+\.\w{2,}\b/i;
