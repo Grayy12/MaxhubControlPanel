@@ -38,6 +38,7 @@ local localPlayer = Players.LocalPlayer or Players:GetPropertyChangedSignal("Loc
 local HttpService = game:GetService("HttpService")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
+local TeleportService = game:GetService("TeleportService")
 local CoreGui = (gethui and gethui()) or game:GetService("CoreGui")
 
 local isUserMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
@@ -229,6 +230,13 @@ function GlobalChat.init()
 		return
 	end
 
+	local function typeWrite(textlabel: TextLabel, text: string, delay: number?)
+		for i = 1, #text do
+			textlabel.Text = text:sub(1, i)
+			task.wait(delay or 0.05)
+		end
+	end
+
 	local function getGameData(placeId)
 		local response = {}
 
@@ -357,18 +365,24 @@ function GlobalChat.init()
 
 			s:Play()
 			s.Completed:Wait()
-			game:GetService("TeleportService"):TeleportToPlaceInstance(metadata.placeid, metadata.jobid, localPlayer)
+
+			local teleported = pcall(TeleportService.TeleportToPlaceInstance, TeleportService, metadata.placeid, metadata.jobid, localPlayer)
+			if not teleported then
+				typeWrite(message, `Error joining {sender}'s game.`)
+				self:_hideGameInvite()
+			end
 		end)
 
-		cancel.Interact.MouseButton1Click:Once(function()
-			local tween = TweenService:Create(self.GameJoin, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {
-				Position = UDim2.new(0.5, 0, -0.2, 0),
-			})
-			tween:Play()
-			tween.Completed:Wait()
+		cancel.Interact.MouseButton1Click:Once(function() self:_hideGameInvite() end)
+	end
 
-			gameInviteShowing = false
-		end)
+	function self:_hideGameInvite()
+		local tween = TweenService:Create(self.GameJoin, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {
+			Position = UDim2.new(0.5, 0, -0.2, 0),
+		})
+		tween:Play()
+		tween.Completed:Wait()
+		gameInviteShowing = false
 	end
 
 	function self:addMessage(msg: string, type: "Free" | "Paid" | "Invite" | "Discord" | "Dev", sender: string, metadata: { any }?)
