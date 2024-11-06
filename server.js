@@ -1,6 +1,7 @@
 require("dotenv").config();
 const express = require("express");
 const http = require("http");
+const axios = require("axios");
 const WebSocket = require("ws");
 const cookieParser = require("cookie-parser");
 const path = require("path");
@@ -602,6 +603,11 @@ const port = process.env.PORT || 3001;
 // Start the server and listen on the specified port
 server.listen(port, "0.0.0.0", () => {
   console.log(`Server listening on port ${port}`);
+  // print server ip
+
+  axios.get("https://api.ipify.org").then((response) => {
+    console.log(`Server IP: ${response.data}`);
+  });
 
   // BannedUsers = LoadFromJSON();
 
