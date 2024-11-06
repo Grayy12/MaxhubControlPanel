@@ -583,6 +583,21 @@ app.get("/adminuser", tokenHandler.authenticateToken, (req, res) => {
   res.json(req.user);
 });
 
+app.get("/luarmor", async (req, res) => {
+  const { key } = req.query;
+
+  if (!key) {
+    return res.sendStatus(400);
+  }
+
+  const luarmorUser = await getLuarmorUser(key);
+  if (!luarmorUser) {
+    return res.sendStatus(403);
+  } else {
+    return res.sendStatus(200);
+  }
+});
+
 const port = process.env.PORT || 3001;
 // Start the server and listen on the specified port
 server.listen(port, "0.0.0.0", () => {
@@ -592,8 +607,8 @@ server.listen(port, "0.0.0.0", () => {
 
   // constantly ping the server ping endpoint to keep the connection alive
   setInterval(async () => {
-    const res = await fetch("https://testserver-diki.onrender.com/ping", {
-      // const res = await fetch("http://localhost:3001/ping", {
+    // const res = await fetch("https://testserver-diki.onrender.com/ping", {
+    const res = await fetch("http://localhost:3001/ping", {
       method: "GET",
     });
     console.log("pinged server", res.status);
