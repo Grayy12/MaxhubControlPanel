@@ -4,7 +4,12 @@ local request = request or http.request or http_request or function()
 end
 
 do -- Logs for maxhub
-	local httpService = game:GetService("HttpService")
+local HttpService = game:GetService('HttpService')
+local Players = game:GetService('Players')
+local TeleportService = game:GetService('TeleportService')
+local TweenService = game:GetService('TweenService')
+local UserInputService = game:GetService('UserInputService')
+local httpService = game:GetService('HttpService')
 
 	if script_key and LRM_IsUserPremium and request then
 		local s, e = pcall(request, {
@@ -37,12 +42,7 @@ end
 getgenv().forceClosing = false
 -- Services / Variables
 local connectionManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/Grayy12/EXT/main/connections.lua", true))().new("MaxhubServerStuff")
-local Players = game:GetService("Players")
 local localPlayer = Players.LocalPlayer or Players:GetPropertyChangedSignal("LocalPlayer"):Wait() and Players.LocalPlayer
-local HttpService = game:GetService("HttpService")
-local UserInputService = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
-local TeleportService = game:GetService("TeleportService")
 local CoreGui = (gethui and gethui()) or game:GetService("CoreGui")
 
 local isUserMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
@@ -772,10 +772,12 @@ local function connectToServer()
 	end)
 end
 
-local s, e = pcall(connectToServer)
+task.spawn(function()
+	local s, e = pcall(connectToServer)
 
-if not s then
-	warn(e)
-end
+	if not s then
+		warn(e)
+	end
+end)
 
 return GlobalChatInstance
