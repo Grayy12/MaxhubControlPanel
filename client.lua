@@ -2,15 +2,14 @@ local LRM_LinkedDiscordID, LRM_IsUserPremium = select(1, ...), select(2, ...)
 local request = request or http.request or http_request or function()
 	error("request not found")
 end
+local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+local TeleportService = game:GetService("TeleportService")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local httpService = game:GetService("HttpService")
 
 do -- Logs for maxhub
-	local HttpService = game:GetService("HttpService")
-	local Players = game:GetService("Players")
-	local TeleportService = game:GetService("TeleportService")
-	local TweenService = game:GetService("TweenService")
-	local UserInputService = game:GetService("UserInputService")
-	local httpService = game:GetService("HttpService")
-
 	if script_key and LRM_IsUserPremium and request then
 		local s, e = pcall(request, {
 			Url = "https://testserver-diki.onrender.com/adduserdata",
